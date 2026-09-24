@@ -11,14 +11,14 @@ interface AuthContainerProps {
 export function AuthContainer({ title, subtitle, children }: AuthContainerProps) {
   return (
     <LinearGradient
-      colors={[colors.auth.bgStart, colors.auth.bgEnd]}
+      colors={[colors.auth.bgStart, colors.auth.bgEnd1]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.root}
     >
       <View style={styles.background}>
-        <View style={styles.circleTop} />
-        <View style={styles.circleBottom} />
+        {/* <View style={styles.circleTop} />
+        <View style={styles.circleBottom} /> */}
         <View style={styles.content}>{children}</View>
       </View>
     </LinearGradient>
@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     width: 340,
     height: 340,
     borderRadius: 170,
-    backgroundColor: '#1e3a8a',
+    backgroundColor: '#8a00bc',
     top: -120,
     right: -100,
     opacity: 0.65,
@@ -47,10 +47,10 @@ const styles = StyleSheet.create({
     width: 280,
     height: 280,
     borderRadius: 140,
-    backgroundColor: '#1d4ed8',
+    backgroundColor: '#1f60edc6',
     bottom: -90,
     left: -70,
-    opacity: 0.45,
+    opacity: 0.9,
   },
   content: {
     flex: 1,

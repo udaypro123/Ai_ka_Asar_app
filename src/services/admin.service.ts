@@ -1,0 +1,21 @@
+import api from '../config/api';
+import { AdminStats, RecentActivity } from '../types';
+
+export const adminService = {
+  getDashboardStats: async (): Promise<AdminStats> => {
+    const response = await api.get('/admin/stats');
+    return response.data.data;
+  },
+
+  getRecentActivity: async (): Promise<RecentActivity[]> => {
+    const response = await api.get('/admin/recent-activity');
+    return response.data.data;
+  },
+
+  getAllUsers: async () => {
+    const response = await api.get('/admin/users');
+    return response.data.data;
+  },
+};
+
+export default adminService;

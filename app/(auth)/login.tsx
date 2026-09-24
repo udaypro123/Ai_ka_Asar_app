@@ -56,9 +56,16 @@ export default function LoginScreen() {
     if (isAuthenticated && user && !hasNavigated.current) {
       hasNavigated.current = true;
       if (user.roles && user.roles.length > 0) {
-        router.replace('(tabs)');
+        const role = user.roles[0];
+        if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+          router.replace('(admin)' as any);
+        } else if (role === 'HR') {
+          router.replace('(hr)' as any);
+        } else {
+          router.replace('(user)' as any);
+        }
       } else {
-        router.replace('(onboarding)');
+        router.replace('(onboarding)' as any);
       }
     }
   }, [isAuthenticated, user, router]);
@@ -76,7 +83,7 @@ export default function LoginScreen() {
         <View style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Sign in</Text>
-            <Text style={styles.subtitle}>Enter your credentials to access your account</Text>
+            <Text style={styles.subtitle}>Sign in to continue</Text>
           </View>
 
           {error && <Text style={styles.error}>{error}</Text>}
@@ -101,7 +108,9 @@ export default function LoginScreen() {
 
           <View style={styles.actionsRow}>
             <Pressable style={styles.rememberMe} onPress={toggleRememberMe}>
-              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]} />
+              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+              </View>
               <Text style={styles.rememberMeText}>Remember Me</Text>
             </Pressable>
             <Pressable onPress={() => navigation.navigate('forgot-password')}>
@@ -112,7 +121,7 @@ export default function LoginScreen() {
           <AuthButton title="Sign In" onPress={() => dispatch(login({ email, password }))} loading={isLoading} />
 
           <AuthLink
-            text="Don't have an Account?"
+            text="Don't have an Account ?"
             linkText="Sign up"
             onPress={() => navigation.navigate('register')}
           />
@@ -128,28 +137,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
-    padding: spacing.xl,
-    shadowColor: '#000',
+    borderRadius: 10,
+    backgroundColor: "white",
+    padding: spacing.md,
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 1,
     shadowRadius: 24,
-    elevation: 12,
+    boxShadow: "rgba(14, 30, 37, 0.12) 0px 2px 4px 0px, rgba(14, 30, 37, 0.32) 0px 2px 16px 0px"
   },
   header: {
     marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#000000',
     marginBottom: spacing.xs,
+    textAlign: "center"
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: '#64748b',
-    marginBottom: spacing.lg,
+    color: '#000103',
+    textAlign: "center"
   },
   error: {
     color: '#ef4444',
@@ -168,17 +177,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+
+
+  checkboxChecked: {
+    backgroundColor: '#3131ec',
+  },
+
+  checkmark: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    lineHeight: 18,
+    textAlign:"center"
+  },
   checkbox: {
     width: 18,
     height: 18,
     borderRadius: 4,
     backgroundColor: '#e2e8f0',
   },
-  checkboxChecked: {
-    backgroundColor: '#2563eb',
-  },
+
   rememberMeText: {
-    color: '#64748b',
+    color: '#0060e7',
     fontSize: typography.fontSize.sm,
   },
   forgotPasswordText: {

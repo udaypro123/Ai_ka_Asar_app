@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.text,
+    color: "black",
     marginBottom: spacing.xs,
   },
   inputContainer: {

@@ -39,6 +39,7 @@ export const colors = {
   auth: {
     bgStart: '#0047ecc1',
     bgEnd: '#ffffff',
+    bgEnd1: '#f1fdfcd2',
     cardBg: 'rgba(236, 238, 241, 0.74)',
     cardBorder: 'rgba(253, 253, 253, 0.88)',
     inputBg: 'rgba(15, 23, 42, 0.7)',

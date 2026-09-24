@@ -4,12 +4,12 @@ import { useAppSelector, useAppDispatch } from '../../src/store/hooks';
 import { updateProfile } from '../../src/store/slices/authSlice';
 import { postService, commentService, likeService } from '../../src/services/social.service';
 import { Post, Comment } from '../../src/types';
-import { borderRadius, colors, spacing, typography } from '@/theme';
-import { GradientScrollView } from '@/components/common/BackgroundGradient';
-import { useToast } from '@/components/common/Toast';
+import { borderRadius, colors, spacing, typography } from '../../src/theme';
+import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
+import { useToast } from '../../src/components/common/Toast';
 import { useRouter } from 'expo-router';
 
-export default function HomeScreen() {
+export default function UserDashboardScreen() {
   const { user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const toast = useToast();
@@ -142,26 +142,6 @@ export default function HomeScreen() {
     }
   };
 
-  const handleDeletePost = (postId: string) => {
-    // Delete functionality is available but hidden from UI
-    Alert.alert('Delete Thought', 'Are you sure you want to delete this thought?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await postService.deletePost(postId);
-            toast.showToast('Thought deleted', 'success');
-            loadMyPosts();
-          } catch (error) {
-            toast.showToast('Failed to delete thought', 'error');
-          }
-        },
-      },
-    ]);
-  };
-
   const openPostDetail = async (post: Post) => {
     setSelectedPost(post);
     setLoadingComments(true);
@@ -216,7 +196,7 @@ export default function HomeScreen() {
     <GradientScrollView contentContainerStyle={styles.content}>
       <Text style={styles.greeting}>{greeting}, {user?.name?.split(' ')?.[0] || 'User'}</Text>
 
-      <Pressable style={styles.userCountCard} onPress={() => router.push('/(tabs)/users')}>
+      <Pressable style={styles.userCountCard} onPress={() => router.push('community')}>
         <Text style={styles.userCountLabel}>Community</Text>
         <Text style={styles.userCountValue}>See all users and posts</Text>
         <Text style={styles.userCountArrow}>›</Text>
@@ -307,9 +287,6 @@ export default function HomeScreen() {
                 <Pressable onPress={() => openEditThought(post)}>
                   <Text style={styles.actionText}>Edit</Text>
                 </Pressable>
-                {/* <Pressable onPress={() => handleDeletePost(post._id)}>
-                  <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
-                </Pressable> */}
               </View>
             </View>
             <Text style={styles.postContent} numberOfLines={4}>{post.content}</Text>

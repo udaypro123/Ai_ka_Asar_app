@@ -1,12 +1,19 @@
 import { Drawer } from 'expo-router/drawer';
 import { Text, View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
+import { useAppSelector } from '../../src/store/hooks';
 import { colors, typography, spacing, borderRadius } from '../../src/theme';
 
 function DrawerContent(props: any) {
   const router = useRouter();
+  const { user } = useAppSelector((state) => state.auth);
+  const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN') || user?.roles?.includes('HR');
+
   const items = [
-    { name: 'index', title: 'Home', icon: '🏠' },
+    { name: 'index', title: 'Dashboard', icon: '🏠' },
+    { name: 'users', title: 'Community', icon: '👥' },
+    ...(isAdmin ? [{ name: 'admin', title: 'Admin Panel', icon: '📊' }] : []),
     { name: 'impact', title: 'Impact', icon: '📈' },
     { name: 'career', title: 'Career', icon: '💼' },
     { name: 'skills', title: 'Skills', icon: '⭐' },
@@ -14,7 +21,7 @@ function DrawerContent(props: any) {
   ];
 
   const navigate = (route: string) => {
-    const path = route === 'index' ? '/(tabs)' : `/(tabs)/${route}`;
+    const path = route === 'index' ? '(user)' : '(user)/' + route;
     router.replace(path as any);
     props.navigation?.closeDrawer?.();
   };
@@ -65,6 +72,15 @@ function DrawerContent(props: any) {
 }
 
 export default function TabsLayout() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('(auth)/login' as any);
+    }
+  }, [isAuthenticated, isLoading, router]);
+
   return (
     <Drawer
       drawerContent={DrawerContent}
@@ -86,8 +102,22 @@ export default function TabsLayout() {
       <Drawer.Screen
         name="index"
         options={{
-          title: 'Home',
-          headerTitle: 'Home',
+          title: 'Dashboard',
+          headerTitle: 'My Dashboard',
+        }}
+      />
+      <Drawer.Screen
+        name="users"
+        options={{
+          title: 'Community',
+          headerTitle: 'Community Posts',
+        }}
+      />
+      <Drawer.Screen
+        name="admin"
+        options={{
+          title: 'Admin Panel',
+          headerTitle: 'Admin Dashboard',
         }}
       />
       <Drawer.Screen

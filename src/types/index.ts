@@ -11,8 +11,34 @@ export interface User {
   careerGoal?: string;
   aiUsage?: string;
   aiImpactStatus?: string;
+  mobile?: string;
+  currentRole?: string;
+  previousRole?: string;
+  company?: string;
   isEmailVerified: boolean;
   roles: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  todayUsers: number;
+  recentUsers: Array<{
+    _id: string;
+    name: string;
+    email: string;
+    roles: string[];
+    createdAt: string;
+  }>;
+}
+
+export interface RecentActivity {
+  _id: string;
+  name: string;
+  email: string;
+  roles: string[];
+  action: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -99,4 +125,44 @@ export interface Notification {
   type: string;
   read: boolean;
   createdAt: string;
+}
+
+export interface PostAuthor {
+  _id: string;
+  name: string;
+  email: string;
+  roles: string[];
+  mobile?: string;
+  currentRole?: string;
+  previousRole?: string;
+  company?: string;
+  skills?: string[];
+}
+
+export interface Post {
+  _id: string;
+  userId: string;
+  user: PostAuthor;
+  title: string;
+  content: string;
+  category?: string;
+  likes: string[];
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Comment {
+  _id: string;
+  postId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LikeResponse {
+  liked: boolean;
+  likesCount: number;
 }

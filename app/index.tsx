@@ -26,12 +26,19 @@ export default function Index() {
     if (!isLoading) {
       if (isAuthenticated && user) {
         if (user.roles && user.roles.length > 0) {
-          navigation.replace('(tabs)');
+          const role = user.roles[0];
+          if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+            navigation.replace('(admin)' as any);
+          } else if (role === 'HR') {
+            navigation.replace('(hr)' as any);
+          } else {
+            navigation.replace('(user)' as any);
+          }
         } else {
-          navigation.replace('(onboarding)');
+          navigation.replace('(onboarding)' as any);
         }
       } else {
-        navigation.replace('(auth)');
+        navigation.replace('(auth)' as any);
       }
     }
   }, [isLoading, isAuthenticated, user, navigation]);

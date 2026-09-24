@@ -7,13 +7,14 @@ import { AuthContainer } from '../../src/components/auth/AuthContainer';
 import { AuthInput } from '../../src/components/auth/AuthInput';
 import { AuthButton } from '../../src/components/auth/AuthButton';
 import { AuthLink } from '../../src/components/auth/AuthLink';
-import { colors, typography, spacing } from '../../src/theme';
+import { colors, typography, spacing, borderRadius } from '../../src/theme';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [role, setRole] = useState<'USER' | 'HR'>('USER');
   const dispatch = useAppDispatch();
   const { isLoading, error, isAuthenticated, user } = useAppSelector((state) => state.auth);
   const navigation = useNavigation<any>();
@@ -24,9 +25,16 @@ export default function RegisterScreen() {
     if (isAuthenticated && user && !hasNavigated.current) {
       hasNavigated.current = true;
       if (user.roles && user.roles.length > 0) {
-        router.replace('(tabs)');
+        const role = user.roles[0];
+        if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+          router.replace('(admin)' as any);
+        } else if (role === 'HR') {
+          router.replace('(hr)' as any);
+        } else {
+          router.replace('(user)' as any);
+        }
       } else {
-        router.replace('(onboarding)');
+        router.replace('(onboarding)' as any);
       }
     }
   }, [isAuthenticated, user, router]);
@@ -74,7 +82,31 @@ export default function RegisterScreen() {
             onToggleSecure={() => setShowPassword((prev) => !prev)}
           />
 
-          <AuthButton title="Sign Up" onPress={() => dispatch(register({ name, email, password }))} loading={isLoading} />
+          <Text style={styles.roleLabel}>I am a:</Text>
+          <View style={styles.roleContainer}>
+            <Pressable
+              style={[styles.roleButton, role === 'USER' && styles.roleButtonActive]}
+              onPress={() => setRole('USER')}
+            >
+              <Text style={[styles.roleButtonText, role === 'USER' && styles.roleButtonTextActive]}>
+                USER
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.roleButton, role === 'HR' && styles.roleButtonActive]}
+              onPress={() => setRole('HR')}
+            >
+              <Text style={[styles.roleButtonText, role === 'HR' && styles.roleButtonTextActive]}>
+                HR
+              </Text>
+            </Pressable>
+          </View>
+
+          <AuthButton
+            title="Sign Up"
+            onPress={() => dispatch(register({ name, email, password, role }))}
+            loading={isLoading}
+          />
 
           <AuthLink
             text="Already have an Account?"
@@ -93,33 +125,66 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 24,
-    padding: spacing.xl,
-    shadowColor: '#000',
+      borderRadius: 10,
+    backgroundColor:"white",
+    padding: spacing.md,
+    // shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 1,
     shadowRadius: 24,
-    elevation: 12,
+    // elevation: 12,
   },
   header: {
     marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#000409',
     marginBottom: spacing.xs,
+    textAlign:"center"
   },
   subtitle: {
     fontSize: typography.fontSize.base,
-    color: '#64748b',
-    marginBottom: spacing.lg,
+    color: '#000101',
+     textAlign:"center"
   },
   error: {
     color: '#ef4444',
     marginBottom: spacing.md,
     fontSize: typography.fontSize.sm,
     textAlign: 'center',
+  },
+  roleLabel: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.white,
+    marginBottom: spacing.sm,
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  roleButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.auth.cardBorder,
+    backgroundColor: colors.auth.cardBg,
+    alignItems: 'center',
+  },
+  roleButtonActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  roleButtonText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.auth.textSecondary,
+  },
+  roleButtonTextActive: {
+    color: colors.white,
   },
 });

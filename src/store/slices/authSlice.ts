@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { storage } from '../../utils/storage';
 import authService from '../../services/auth.service';
 import { User } from '../../types';
+import { userService } from '../../services/user.service';
 
 interface AuthState {
   user: User | null;
@@ -53,7 +54,7 @@ export const login = createAsyncThunk(
 
 export const register = createAsyncThunk(
   'auth/register',
-  async (data: { name: string; email: string; password: string }, { rejectWithValue }) => {
+  async (data: { name: string; email: string; password: string; role?: string }, { rejectWithValue }) => {
     try {
       console.log('[authSlice] register attempt:', data.email);
       const response = await authService.register(data);
@@ -76,6 +77,18 @@ export const logout = createAsyncThunk('auth/logout', async (_, { getState }) =>
   await storage.removeItem('accessToken');
   await storage.removeItem('refreshToken');
 });
+
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (data: Partial<User>, { rejectWithValue }) => {
+    try {
+      const response = await userService.updateProfile(data);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Profile update failed');
+    }
+  }
+);
 
 const authSlice = createSlice({
   name: 'auth',
@@ -114,25 +127,37 @@ const authSlice = createSlice({
         state.accessToken = null;
         state.refreshToken = null;
       })
+      .addCase(login.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(login.fulfilled, (state, action) => {
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
         state.isAuthenticated = true;
+        state.isLoading = false;
         state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
         state.error = action.payload as string;
+        state.isLoading = false;
+      })
+      .addCase(register.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
       })
       .addCase(register.fulfilled, (state, action) => {
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
         state.isAuthenticated = true;
+        state.isLoading = false;
         state.error = null;
       })
       .addCase(register.rejected, (state, action) => {
         state.error = action.payload as string;
+        state.isLoading = false;
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
@@ -140,6 +165,12 @@ const authSlice = createSlice({
         state.refreshToken = null;
         state.isAuthenticated = false;
         state.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.user = action.payload;
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.error = action.payload as string;
       });
   },
 });

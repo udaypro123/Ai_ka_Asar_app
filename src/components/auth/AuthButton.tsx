@@ -38,6 +38,6 @@ const styles = StyleSheet.create({
   text: {
     color: colors.white,
     fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semiBold,
+    fontWeight: typography.fontWeight.semibold,
   },
 });

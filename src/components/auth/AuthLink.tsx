@@ -26,11 +26,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   text: {
-    color: colors.textSecondary,
+    color: colors.black,
     fontSize: typography.fontSize.sm,
   },
   link: {
     color: colors.primary,
-    fontWeight: typography.fontWeight.semiBold,
+    fontWeight: typography.fontWeight.semibold,
   },
 });
