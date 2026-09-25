@@ -2,16 +2,19 @@ import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from
 import { useEffect, useState } from 'react';
 import { useAppSelector } from '../../src/store/hooks';
 import { adminService } from '../../src/services/admin.service';
-import { AdminStats } from '../../src/types';
+import { AdminStats, User } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
+import { useRouter } from 'expo-router';
 
 export default function AdminUsersScreen() {
   const { user } = useAppSelector((state) => state.auth);
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN') || user?.roles?.includes('HR');
+  const router = useRouter();
 
   useEffect(() => {
     if (isAdmin) {
@@ -21,8 +24,11 @@ export default function AdminUsersScreen() {
 
   const loadData = async () => {
     try {
-      const data = await adminService.getDashboardStats();
-      setStats(data);
+      const [statsData] = await Promise.all([
+        adminService.getDashboardStats(),
+        adminService.getAllUsers(),
+      ]);
+      setStats(statsData);
     } catch (error) {
       console.error('Failed to load users:', error);
     } finally {
@@ -52,11 +58,15 @@ export default function AdminUsersScreen() {
       <Text style={styles.subtitle}>Total: {stats?.totalUsers || 0} users</Text>
 
       <View style={styles.card}>
-        {stats?.recentUsers?.length === 0 ? (
+        {users.length === 0 ? (
           <Text style={styles.emptyText}>No users yet</Text>
         ) : (
-          stats?.recentUsers?.map((u) => (
-            <View key={u._id} style={styles.listItem}>
+          users.map((u) => (
+            <Pressable
+              key={u._id}
+              style={styles.listItem}
+              onPress={() => router.push(`/(admin)/user-detail?userId=${u._id}` as any)}
+            >
               <View style={styles.listItemHeader}>
                 <Text style={styles.listItemTitle}>{u.name}</Text>
                 <View style={styles.roleBadge}>
@@ -64,10 +74,16 @@ export default function AdminUsersScreen() {
                 </View>
               </View>
               <Text style={styles.listItemSubtitle}>{u.email}</Text>
+              {u.currentRole && (
+                <Text style={styles.listItemDetail}>{u.currentRole} {u.company ? `at ${u.company}` : ''}</Text>
+              )}
+              {u.mobile && (
+                <Text style={styles.listItemDetail}>Mobile: {u.mobile}</Text>
+              )}
               <Text style={styles.listItemDate}>
                 Joined {new Date(u.createdAt).toLocaleDateString()}
               </Text>
-            </View>
+            </Pressable>
           ))
         )}
       </View>
@@ -120,6 +136,11 @@ const styles = StyleSheet.create({
     color: colors.auth.text,
   },
   listItemSubtitle: {
+    fontSize: typography.fontSize.sm,
+    color: colors.auth.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  listItemDetail: {
     fontSize: typography.fontSize.sm,
     color: colors.auth.textSecondary,
     marginBottom: spacing.xs,

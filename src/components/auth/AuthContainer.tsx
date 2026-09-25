@@ -11,7 +11,7 @@ interface AuthContainerProps {
 export function AuthContainer({ title, subtitle, children }: AuthContainerProps) {
   return (
     <LinearGradient
-      colors={[colors.auth.bgStart, colors.auth.bgEnd1]}
+      colors={['white', colors.auth.bgEnd1]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.root}

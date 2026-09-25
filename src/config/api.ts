@@ -18,6 +18,12 @@ apiClient.interceptors.request.use(async (config) => {
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
+    console.log('[api] request:', {
+      method: config.method,
+      url: config.url,
+      hasAuth: !!accessToken,
+      contentType: config.headers['Content-Type'],
+    });
   } catch (error) {
     console.error('Error retrieving access token:', error);
   }
@@ -34,6 +40,8 @@ apiClient.interceptors.response.use(
       method: originalRequest?.method,
       message: error.message,
       code: error.code,
+      status: error.response?.status,
+      data: error.response?.data,
     });
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

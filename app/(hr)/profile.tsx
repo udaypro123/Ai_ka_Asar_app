@@ -1,9 +1,7 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert } from 'react-native';
-import { useState, useEffect } from 'react';
-import * as DocumentPicker from 'expo-document-picker';
+import { View, Text, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
+import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../src/store/hooks';
 import { logout, updateProfile } from '../../src/store/slices/authSlice';
-import { userService } from '../../src/services/user.service';
 import { useToast } from '../../src/components/common/Toast';
 import { GradientScrollView } from '@/components/common/BackgroundGradient';
 import { borderRadius, colors, spacing, typography } from '@/theme';
@@ -20,21 +18,11 @@ export default function ProfileScreen() {
   const [mobile, setMobile] = useState(user?.mobile || '');
   const [currentRole, setCurrentRole] = useState(user?.currentRole || '');
   const [previousRole, setPreviousRole] = useState(user?.previousRole || '');
-  const [previousCompany, setPreviousCompany] = useState(user?.previousCompany || '');
   const [company, setCompany] = useState(user?.company || '');
-  const [jobDescription, setJobDescription] = useState(user?.jobDescription || '');
   const [skills, setSkills] = useState(user?.skills?.join(', ') || '');
-  const [linkedinUrl, setLinkedinUrl] = useState(user?.linkedinUrl || '');
-  const [githubUrl, setGithubUrl] = useState(user?.githubUrl || '');
-  const [resumeName, setResumeName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    if (user?.resume) {
-      setResumeName(user.resume.split('/').pop() || 'Resume uploaded');
-    }
-  }, [user]);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
@@ -50,12 +38,8 @@ export default function ProfileScreen() {
           mobile,
           currentRole,
           previousRole,
-          previousCompany,
           company,
-          jobDescription,
           skills: skillsArray,
-          linkedinUrl: linkedinUrl.trim() ? linkedinUrl.trim() : undefined,
-          githubUrl: githubUrl.trim() ? githubUrl.trim() : undefined,
         } as any)
       ).unwrap();
       toast.showToast('Profile updated', 'success');
@@ -66,59 +50,15 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleResumePick = async () => {
-    try {
-      console.log('[ProfileScreen] opening document picker');
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-      });
-      console.log('[ProfileScreen] document picker result:', JSON.stringify(result, null, 2));
-      if (result.canceled) {
-        console.log('[ProfileScreen] document picker cancelled by user');
-        return;
-      }
-      const asset = result.assets?.[0];
-      console.log('[ProfileScreen] selected asset:', asset);
-      if (!asset) {
-        console.log('[ProfileScreen] no asset found');
-        toast.showToast('No file selected', 'error');
-        return;
-      }
-      setUploading(true);
-      try {
-        console.log('[ProfileScreen] calling uploadResume with:', asset);
-        await userService.uploadResume({
-          uri: asset.uri,
-          name: asset.name,
-          type: asset.mimeType || 'application/pdf',
-        } as any);
-        setResumeName(asset.name);
-        toast.showToast('Resume uploaded', 'success');
-      } catch (error) {
-        console.error('[ProfileScreen] upload failed:', error);
-        toast.showToast('Failed to upload resume', 'error');
-      } finally {
-        setUploading(false);
-      }
-    } catch (error) {
-      console.error('[ProfileScreen] document picker error:', error);
-      toast.showToast('Failed to pick document', 'error');
-    }
+  const handleLogout = () => {
+    setShowConfirm(true);
   };
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: () => {
-          dispatch(logout());
-          toast.showToast('Logged out successfully', 'success');
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
+  const confirmLogout = () => {
+    setShowConfirm(false);
+    dispatch(logout());
+    toast.showToast('Logged out successfully', 'success');
+    router.replace('/(auth)/login');
   };
 
   return (
@@ -132,7 +72,7 @@ export default function ProfileScreen() {
         <Text style={styles.name}>{user?.name || 'User'}</Text>
         <Text style={styles.email}>{user?.email || ''}</Text>
       </View>
-
+{/* 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Professional Details</Text>
         <View style={styles.card}>
@@ -151,22 +91,8 @@ export default function ProfileScreen() {
           <Text style={styles.label}>Previous Role</Text>
           <TextInput style={styles.input} value={previousRole} onChangeText={setPreviousRole} placeholder="e.g. Junior Developer" />
 
-          <Text style={styles.label}>Current Company</Text>
+          <Text style={styles.label}>Company / Organization</Text>
           <TextInput style={styles.input} value={company} onChangeText={setCompany} placeholder="e.g. Google, Microsoft" />
-
-          <Text style={styles.label}>Previous Company</Text>
-          <TextInput style={styles.input} value={previousCompany} onChangeText={setPreviousCompany} placeholder="e.g. ABC Corp" />
-
-          <Text style={styles.label}>Job Description</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={jobDescription}
-            onChangeText={setJobDescription}
-            placeholder="Brief description of your current role"
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
 
           <Text style={styles.label}>Skills (comma separated)</Text>
           <TextInput
@@ -179,23 +105,11 @@ export default function ProfileScreen() {
             textAlignVertical="top"
           />
 
-          <Text style={styles.label}>LinkedIn Profile URL</Text>
-          <TextInput style={styles.input} value={linkedinUrl} onChangeText={setLinkedinUrl} placeholder="https://linkedin.com/in/username" autoCapitalize="none" />
-
-          <Text style={styles.label}>GitHub Profile URL</Text>
-          <TextInput style={styles.input} value={githubUrl} onChangeText={setGithubUrl} placeholder="https://github.com/username" autoCapitalize="none" />
-
-          <Text style={styles.label}>Resume</Text>
-          <Pressable style={styles.uploadButton} onPress={handleResumePick} disabled={uploading}>
-            <Text style={styles.uploadButtonText}>{uploading ? 'Uploading...' : resumeName ? 'Replace Resume' : 'Upload Resume'}</Text>
-          </Pressable>
-          {resumeName && <Text style={styles.fileName}>{resumeName}</Text>}
-
           <Pressable style={styles.saveButton} onPress={handleSave} disabled={saving}>
             <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save Profile'}</Text>
           </Pressable>
         </View>
-      </View>
+      </View> */}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
@@ -213,13 +127,30 @@ export default function ProfileScreen() {
           <Text style={styles.menuItemText}>Download My Data</Text>
         </Pressable>
         <Pressable style={styles.menuItem}>
-          <Text style={styles.menuItemText}>Delete My Account</Text>
+          <Text style={[styles.menuItemText, styles.dangerText]}>Delete My Account</Text>
         </Pressable>
       </View>
 
       <Pressable style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </Pressable>
+
+      {showConfirm && (
+        <View style={styles.overlay}>
+          <View style={styles.confirmDialog}>
+            <Text style={styles.confirmTitle}>Logout</Text>
+            <Text style={styles.confirmMessage}>Are you sure you want to logout?</Text>
+            <View style={styles.confirmActions}>
+              <Pressable style={styles.cancelButton} onPress={() => setShowConfirm(false)}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.confirmButton} onPress={confirmLogout}>
+                <Text style={styles.confirmButtonText}>Logout</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </GradientScrollView>
   );
 }
@@ -293,37 +224,17 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   input: {
-    backgroundColor: colors.auth.inputBg1,
+    backgroundColor: colors.auth.inputBg,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     color: colors.auth.text,
     fontSize: typography.fontSize.base,
     borderWidth: 1,
-    borderColor: colors.auth.inputBorder1,
+    borderColor: colors.auth.inputBorder,
   },
   textArea: {
     minHeight: 60,
     textAlignVertical: 'top',
-  },
-  uploadButton: {
-    backgroundColor: colors.secondary,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    marginTop: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.primaryDark,
-  },
-  uploadButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  fileName: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary,
-    marginTop: spacing.sm,
-    textAlign: 'center',
   },
   saveButton: {
     backgroundColor: colors.primary,
@@ -362,6 +273,9 @@ const styles = StyleSheet.create({
     color: colors.auth.text,
     fontWeight: typography.fontWeight.medium,
   },
+  dangerText: {
+    color: colors.error,
+  },
   logoutButton: {
     backgroundColor: colors.auth.cardBg,
     borderRadius: borderRadius.lg,
@@ -379,6 +293,68 @@ const styles = StyleSheet.create({
   logoutText: {
     color: colors.error,
     fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(21, 52, 174, 0.61)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  confirmDialog: {
+    backgroundColor: "#fff",
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    width: '100%',
+    maxWidth: 320,
+    borderWidth: 1,
+    borderColor: colors.auth.cardBorder,
+    elevation: 8,
+    shadowColor: colors.auth.glow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+  },
+  confirmTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.auth.text,
+    marginBottom: spacing.sm,
+  },
+  confirmMessage: {
+    fontSize: typography.fontSize.sm,
+    color: colors.auth.textSecondary,
+    marginBottom: spacing.lg,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+  },
+  cancelButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  cancelButtonText: {
+    color: colors.auth.textSecondary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  confirmButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.error,
+  },
+  confirmButtonText: {
+    color: colors.white,
+    fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
   },
 });

@@ -1,8 +1,17 @@
+
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+} from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useAppDispatch, useAppSelector } from '../../src/store/hooks';
-import { register, clearError } from '../../src/store/slices/authSlice';
+import { register } from '../../src/store/slices/authSlice';
 import { AuthContainer } from '../../src/components/auth/AuthContainer';
 import { AuthInput } from '../../src/components/auth/AuthInput';
 import { AuthButton } from '../../src/components/auth/AuthButton';
@@ -15,8 +24,12 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<'USER' | 'HR'>('USER');
+
   const dispatch = useAppDispatch();
-  const { isLoading, error, isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const { isLoading, error, isAuthenticated, user } = useAppSelector(
+    (state) => state.auth
+  );
+
   const navigation = useNavigation<any>();
   const router = useRouter();
   const hasNavigated = useRef(false);
@@ -24,14 +37,16 @@ export default function RegisterScreen() {
   useEffect(() => {
     if (isAuthenticated && user && !hasNavigated.current) {
       hasNavigated.current = true;
+
       if (user.roles && user.roles.length > 0) {
-        const role = user.roles[0];
-        if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+        const userRole = user.roles[0];
+
+        if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
           router.replace('(admin)' as any);
-        } else if (role === 'HR') {
+        } else if (userRole === 'HR') {
           router.replace('(hr)' as any);
         } else {
-          router.replace('(user)' as any);
+          router.replace('(tabs)' as any);
         }
       } else {
         router.replace('(onboarding)' as any);
@@ -44,15 +59,29 @@ export default function RegisterScreen() {
   }
 
   return (
-    <AuthContainer title="Create Account" subtitle="Start your AI career journey">
+    <AuthContainer
+      title="Create Account"
+      subtitle="Start your AI career journey"
+    >
       <KeyboardAvoidingView
         style={styles.keyboard}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        {/* AIMarg GIF */}
+        <Image
+          source={require('../../assets/aimarg.gif')}
+          style={styles.gif}
+          resizeMode="contain"
+        />
+
+        {/* Login/Register Card */}
         <View style={styles.card}>
           <View style={styles.header}>
-            <Text style={styles.title}>Sign up</Text>
-            <Text style={styles.subtitle}>Create your account to get started</Text>
+             <Text style={styles.title}>Welcome Back</Text>
+            
+            <Text style={styles.subtitle}>
+              Create your account to get started
+            </Text>
           </View>
 
           {error && <Text style={styles.error}>{error}</Text>}
@@ -83,20 +112,38 @@ export default function RegisterScreen() {
           />
 
           <Text style={styles.roleLabel}>I am a:</Text>
+
           <View style={styles.roleContainer}>
             <Pressable
-              style={[styles.roleButton, role === 'USER' && styles.roleButtonActive]}
+              style={[
+                styles.roleButton,
+                role === 'USER' && styles.roleButtonActive,
+              ]}
               onPress={() => setRole('USER')}
             >
-              <Text style={[styles.roleButtonText, role === 'USER' && styles.roleButtonTextActive]}>
+              <Text
+                style={[
+                  styles.roleButtonText,
+                  role === 'USER' && styles.roleButtonTextActive,
+                ]}
+              >
                 USER
               </Text>
             </Pressable>
+
             <Pressable
-              style={[styles.roleButton, role === 'HR' && styles.roleButtonActive]}
+              style={[
+                styles.roleButton,
+                role === 'HR' && styles.roleButtonActive,
+              ]}
               onPress={() => setRole('HR')}
             >
-              <Text style={[styles.roleButtonText, role === 'HR' && styles.roleButtonTextActive]}>
+              <Text
+                style={[
+                  styles.roleButtonText,
+                  role === 'HR' && styles.roleButtonTextActive,
+                ]}
+              >
                 HR
               </Text>
             </Pressable>
@@ -104,7 +151,9 @@ export default function RegisterScreen() {
 
           <AuthButton
             title="Sign Up"
-            onPress={() => dispatch(register({ name, email, password, role }))}
+            onPress={() =>
+              dispatch(register({ name, email, password, role }))
+            }
             loading={isLoading}
           />
 
@@ -124,48 +173,79 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+
+  /*
+   * GIF is above the card.
+   * Negative margin makes the card overlap
+   * the bottom portion of the GIF.
+   */
+  gif: {
+    width: 250,
+    height: 250,
+    margin:"auto",
+    marginBottom: -70,
+    marginTop: -80,
+    zIndex: 1,
+  },
+
+  /*
+   * Card comes over the GIF.
+   */
   card: {
-      borderRadius: 10,
-    backgroundColor:"white",
+    width: '100%',
+    borderRadius: 10,
+    backgroundColor: 'white',
     padding: spacing.md,
-    // shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
     shadowOpacity: 1,
     shadowRadius: 24,
+
     // elevation: 12,
+    zIndex: 2,
   },
+
   header: {
     marginBottom: spacing.lg,
   },
+
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
     color: '#000409',
     marginBottom: spacing.xs,
-    textAlign:"center"
+    textAlign: 'center',
   },
+
   subtitle: {
     fontSize: typography.fontSize.base,
     color: '#000101',
-     textAlign:"center"
+    textAlign: 'center',
   },
+
   error: {
     color: '#ef4444',
     marginBottom: spacing.md,
     fontSize: typography.fontSize.sm,
     textAlign: 'center',
   },
+
   roleLabel: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
-    color: colors.white,
+    color: colors.black,
     marginBottom: spacing.sm,
   },
+
   roleContainer: {
     flexDirection: 'row',
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
+
   roleButton: {
     flex: 1,
     paddingVertical: spacing.md,
@@ -175,16 +255,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.auth.cardBg,
     alignItems: 'center',
   },
+
   roleButtonActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
+
   roleButtonText: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
     color: colors.auth.textSecondary,
   },
+
   roleButtonTextActive: {
     color: colors.white,
   },
 });
+

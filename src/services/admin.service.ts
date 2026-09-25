@@ -1,5 +1,5 @@
 import api from '../config/api';
-import { AdminStats, RecentActivity } from '../types';
+import { AdminStats, RecentActivity, User } from '../types';
 
 export const adminService = {
   getDashboardStats: async (): Promise<AdminStats> => {
@@ -12,8 +12,13 @@ export const adminService = {
     return response.data.data;
   },
 
-  getAllUsers: async () => {
+  getAllUsers: async (): Promise<User[]> => {
     const response = await api.get('/admin/users');
+    return response.data.data;
+  },
+
+  getUserById: async (userId: string): Promise<User> => {
+    const response = await api.get(`/admin/users/${userId}`);
     return response.data.data;
   },
 };

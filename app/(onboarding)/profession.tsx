@@ -1,6 +1,6 @@
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useState } from 'react';
-import { useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useToast } from '../../src/components/common/Toast';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, typography, spacing, borderRadius } from '@/theme';
@@ -8,7 +8,7 @@ import { colors, typography, spacing, borderRadius } from '@/theme';
 export default function ProfessionScreen() {
   const [profession, setProfession] = useState('');
   const [industry, setIndustry] = useState('');
-  const navigation = useNavigation();
+  const router = useRouter();
   const toast = useToast();
 
   const handleNext = () => {
@@ -16,7 +16,7 @@ export default function ProfessionScreen() {
       toast.showToast('Please enter your profession', 'error');
       return;
     }
-    navigation.replace('(onboarding)/career-profile');
+    router.replace('(onboarding)/career-profile');
   };
 
   return (

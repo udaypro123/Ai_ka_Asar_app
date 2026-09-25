@@ -14,7 +14,12 @@ export interface User {
   mobile?: string;
   currentRole?: string;
   previousRole?: string;
+  previousCompany?: string;
   company?: string;
+  jobDescription?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
+  resume?: string;
   isEmailVerified: boolean;
   roles: string[];
   createdAt: string;
@@ -135,7 +140,12 @@ export interface PostAuthor {
   mobile?: string;
   currentRole?: string;
   previousRole?: string;
+  previousCompany?: string;
   company?: string;
+  jobDescription?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
+  resume?: string;
   skills?: string[];
 }
 

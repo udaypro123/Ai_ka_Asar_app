@@ -3,11 +3,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../../src/store/hooks';
 import { updateProfile } from '../../src/store/slices/authSlice';
 import { postService, commentService, likeService } from '../../src/services/social.service';
+import { userService } from '../../src/services/user.service';
 import { Post, Comment } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
 import { useToast } from '../../src/components/common/Toast';
 import { useRouter } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 
 export default function UserDashboardScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -16,15 +18,21 @@ export default function UserDashboardScreen() {
   const router = useRouter();
 
   const [profile, setProfile] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
     mobile: user?.mobile || '',
     currentRole: user?.currentRole || '',
     previousRole: user?.previousRole || '',
+    previousCompany: user?.previousCompany || '',
     company: user?.company || '',
+    jobDescription: user?.jobDescription || '',
     skills: user?.skills?.join(', ') || '',
-    aiImpactStatus: user?.aiImpactStatus || '',
-    aiUsage: user?.aiUsage || '',
+    linkedinUrl: user?.linkedinUrl || '',
+    githubUrl: user?.githubUrl || '',
   });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [resumeName, setResumeName] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
@@ -47,6 +55,21 @@ export default function UserDashboardScreen() {
     if (hour >= 17 && hour < 21) return 'Good Evening';
     return 'Good Night';
   }, []);
+
+  useEffect(() => {
+    if (user?.resume) {
+      setResumeName(user.resume.split('/').pop() || 'Resume uploaded');
+    }
+  }, [user]);
+
+  const isProfileComplete = useMemo(() => {
+    return !!(
+      profile.currentRole &&
+      profile.company &&
+      profile.skills &&
+      profile.mobile
+    );
+  }, [profile]);
 
   const loadMyPosts = async () => {
     setLoadingPosts(true);
@@ -73,13 +96,17 @@ export default function UserDashboardScreen() {
         .filter((s) => s.length > 0);
       await dispatch(
         updateProfile({
+          name: profile.name,
+          email: profile.email,
           mobile: profile.mobile,
           currentRole: profile.currentRole,
           previousRole: profile.previousRole,
+          previousCompany: profile.previousCompany,
           company: profile.company,
+          jobDescription: profile.jobDescription,
           skills: skillsArray,
-          aiImpactStatus: profile.aiImpactStatus,
-          aiUsage: profile.aiUsage,
+          linkedinUrl: profile.linkedinUrl.trim() ? profile.linkedinUrl.trim() : undefined,
+          githubUrl: profile.githubUrl.trim() ? profile.githubUrl.trim() : undefined,
         } as any)
       ).unwrap();
       toast.showToast('Profile updated', 'success');
@@ -88,6 +115,46 @@ export default function UserDashboardScreen() {
     } finally {
       setSavingProfile(false);
     }
+  };
+
+  const handleResumePick = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+      });
+      if (!result.canceled && result.assets?.[0]) {
+        setUploading(true);
+        try {
+          await userService.uploadResume({
+            uri: result.assets[0].uri,
+            name: result.assets[0].name,
+            type: result.assets[0].mimeType || 'application/pdf',
+          } as any);
+          setResumeName(result.assets[0].name);
+          toast.showToast('Resume uploaded', 'success');
+        } catch {
+          toast.showToast('Failed to upload resume', 'error');
+        } finally {
+          setUploading(false);
+        }
+      }
+    } catch {
+      toast.showToast('Failed to pick document', 'error');
+    }
+  };
+
+  const handleImpactPress = () => {
+    if (!isProfileComplete) {
+      Alert.alert('Complete Your Profile', 'Please fill in your current role, company, skills, and mobile number to continue.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Go to Profile',
+          onPress: () => router.push('/(tabs)/profile'),
+        },
+      ]);
+      return;
+    }
+    router.push('/(tabs)/impact');
   };
 
   const openCreateThought = () => {
@@ -196,39 +263,50 @@ export default function UserDashboardScreen() {
     <GradientScrollView contentContainerStyle={styles.content}>
       <Text style={styles.greeting}>{greeting}, {user?.name?.split(' ')?.[0] || 'User'}</Text>
 
-      <Pressable style={styles.userCountCard} onPress={() => router.push('community')}>
-        <Text style={styles.userCountLabel}>Community</Text>
-        <Text style={styles.userCountValue}>See all users and posts</Text>
-        <Text style={styles.userCountArrow}>›</Text>
+      <Pressable style={styles.impactButton} onPress={handleImpactPress}>
+        <Text style={styles.impactButtonText}>Add Impact</Text>
       </Pressable>
 
       <Text style={styles.sectionTitle}>Your Professional Details</Text>
       <View style={styles.card}>
         <View style={styles.profileRow}>
+          <Text style={styles.profileLabel}>Full Name</Text>
+          <TextInput style={styles.profileInput} value={profile.name} onChangeText={(text) => setProfile({ ...profile, name: text })} />
+        </View>
+        <View style={styles.profileRow}>
+          <Text style={styles.profileLabel}>Email</Text>
+          <TextInput style={styles.profileInput} value={profile.email} onChangeText={(text) => setProfile({ ...profile, email: text })} keyboardType="email-address" autoCapitalize="none" />
+        </View>
+        <View style={styles.profileRow}>
+          <Text style={styles.profileLabel}>Mobile Number</Text>
+          <TextInput style={styles.profileInput} value={profile.mobile} onChangeText={(text) => setProfile({ ...profile, mobile: text })} keyboardType="phone-pad" placeholder="For HR contact" />
+        </View>
+        <View style={styles.profileRow}>
           <Text style={styles.profileLabel}>Current Role</Text>
-          <TextInput
-            style={styles.profileInput}
-            value={profile.currentRole}
-            onChangeText={(text) => setProfile({ ...profile, currentRole: text })}
-            placeholder="e.g. Software Engineer"
-          />
+          <TextInput style={styles.profileInput} value={profile.currentRole} onChangeText={(text) => setProfile({ ...profile, currentRole: text })} placeholder="e.g. Software Engineer" />
         </View>
         <View style={styles.profileRow}>
           <Text style={styles.profileLabel}>Previous Role</Text>
-          <TextInput
-            style={styles.profileInput}
-            value={profile.previousRole}
-            onChangeText={(text) => setProfile({ ...profile, previousRole: text })}
-            placeholder="e.g. Junior Developer"
-          />
+          <TextInput style={styles.profileInput} value={profile.previousRole} onChangeText={(text) => setProfile({ ...profile, previousRole: text })} placeholder="e.g. Junior Developer" />
         </View>
         <View style={styles.profileRow}>
-          <Text style={styles.profileLabel}>Company / Organization</Text>
+          <Text style={styles.profileLabel}>Current Company</Text>
+          <TextInput style={styles.profileInput} value={profile.company} onChangeText={(text) => setProfile({ ...profile, company: text })} placeholder="e.g. Google, Microsoft" />
+        </View>
+        <View style={styles.profileRow}>
+          <Text style={styles.profileLabel}>Previous Company</Text>
+          <TextInput style={styles.profileInput} value={profile.previousCompany} onChangeText={(text) => setProfile({ ...profile, previousCompany: text })} placeholder="e.g. ABC Corp" />
+        </View>
+        <View style={styles.profileRow}>
+          <Text style={styles.profileLabel}>Job Description</Text>
           <TextInput
-            style={styles.profileInput}
-            value={profile.company}
-            onChangeText={(text) => setProfile({ ...profile, company: text })}
-            placeholder="e.g. Google, Microsoft"
+            style={[styles.profileInput, styles.textArea]}
+            value={profile.jobDescription}
+            onChangeText={(text) => setProfile({ ...profile, jobDescription: text })}
+            placeholder="Brief description of your current role"
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
           />
         </View>
         <View style={styles.profileRow}>
@@ -244,33 +322,26 @@ export default function UserDashboardScreen() {
           />
         </View>
         <View style={styles.profileRow}>
-          <Text style={styles.profileLabel}>Mobile Number (for HR contact)</Text>
-          <TextInput
-            style={styles.profileInput}
-            value={profile.mobile}
-            onChangeText={(text) => setProfile({ ...profile, mobile: text })}
-            placeholder="+92 300 1234567"
-            keyboardType="phone-pad"
-          />
+          <Text style={styles.profileLabel}>LinkedIn Profile URL</Text>
+          <TextInput style={styles.profileInput} value={profile.linkedinUrl} onChangeText={(text) => setProfile({ ...profile, linkedinUrl: text })} placeholder="https://linkedin.com/in/username" autoCapitalize="none" />
+        </View>
+        <View style={styles.profileRow}>
+          <Text style={styles.profileLabel}>GitHub Profile URL</Text>
+          <TextInput style={styles.profileInput} value={profile.githubUrl} onChangeText={(text) => setProfile({ ...profile, githubUrl: text })} placeholder="https://github.com/username" autoCapitalize="none" />
+        </View>
+        <View style={styles.profileRow}>
+          <Text style={styles.profileLabel}>Resume</Text>
+          <Pressable style={styles.uploadButton} onPress={handleResumePick} disabled={uploading}>
+            <Text style={styles.uploadButtonText}>{uploading ? 'Uploading...' : resumeName ? 'Replace Resume' : 'Upload Resume'}</Text>
+          </Pressable>
+          {resumeName && <Text style={styles.fileName}>{resumeName}</Text>}
         </View>
         <Pressable style={styles.saveButton} onPress={handleSaveProfile} disabled={savingProfile}>
           <Text style={styles.saveButtonText}>{savingProfile ? 'Saving...' : 'Save Details'}</Text>
         </Pressable>
       </View>
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>My AI Impact Thought</Text>
-        {posts.length === 0 ? (
-          <Pressable style={styles.createButton} onPress={openCreateThought}>
-            <Text style={styles.createButtonText}>+ Share Thought</Text>
-          </Pressable>
-        ) : (
-          <Pressable style={styles.editButton} onPress={() => openEditThought(posts[0])}>
-            <Text style={styles.editButtonText}>Edit</Text>
-          </Pressable>
-        )}
-      </View>
-
+      <Text style={styles.sectionTitle}>My AI Impact Thought</Text>
       {posts.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>You haven't shared your AI impact thought yet.</Text>
@@ -426,48 +497,29 @@ const styles = StyleSheet.create({
     color: colors.auth.text,
     marginBottom: spacing.lg,
   },
-  userCountCard: {
-    backgroundColor: colors.auth.cardBg,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+  impactButton: {
+    backgroundColor: colors.secondary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.auth.cardBorder,
-    elevation: 6,
-    shadowColor: colors.auth.glow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderColor: colors.primaryDark,
+    elevation: 4,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
   },
-  userCountLabel: {
+  impactButtonText: {
+    color: colors.white,
     fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.auth.text,
-  },
-  userCountValue: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary,
     fontWeight: typography.fontWeight.semibold,
-  },
-  userCountArrow: {
-    fontSize: 24,
-    color: colors.auth.textSecondary,
-    fontWeight: '300',
   },
   sectionTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
     color: colors.auth.text,
-    marginBottom: spacing.md,
-    marginTop: spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: spacing.md,
     marginTop: spacing.lg,
   },
@@ -505,6 +557,26 @@ const styles = StyleSheet.create({
     minHeight: 60,
     textAlignVertical: 'top',
   },
+  uploadButton: {
+    backgroundColor: colors.secondary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primaryDark,
+  },
+  uploadButtonText: {
+    color: colors.white,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  fileName: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
   saveButton: {
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
@@ -523,34 +595,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-  },
-  createButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-  },
-  createButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  editButton: {
-    backgroundColor: colors.secondary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-  },
-  editButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  loadingText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.auth.textSecondary,
-    textAlign: 'center',
-    paddingVertical: spacing.md,
   },
   emptyCard: {
     backgroundColor: colors.auth.cardBg,
@@ -825,5 +869,11 @@ const styles = StyleSheet.create({
     color: colors.auth.textSecondary,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
+  },
+  loadingText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.auth.textSecondary,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
   },
 });

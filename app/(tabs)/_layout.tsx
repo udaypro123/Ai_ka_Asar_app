@@ -1,29 +1,61 @@
 import { Drawer } from 'expo-router/drawer';
-import { Text, View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { Text, View, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { useAppSelector } from '../../src/store/hooks';
+import { useAppDispatch, useAppSelector } from '../../src/store/hooks';
+import { logout } from '../../src/store/slices/authSlice';
 import { colors, typography, spacing, borderRadius } from '../../src/theme';
 
 function DrawerContent(props: any) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN') || user?.roles?.includes('HR');
+  const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN');
+  const isHR = user?.roles?.includes('HR');
 
-  const items = [
+  const menuItems = [
     { name: 'index', title: 'Dashboard', icon: '🏠' },
-    { name: 'users', title: 'Community', icon: '👥' },
-    ...(isAdmin ? [{ name: 'admin', title: 'Admin Panel', icon: '📊' }] : []),
+    { name: 'community', title: 'Community', icon: '👥' },
     { name: 'impact', title: 'Impact', icon: '📈' },
     { name: 'career', title: 'Career', icon: '💼' },
     { name: 'skills', title: 'Skills', icon: '⭐' },
     { name: 'profile', title: 'Profile', icon: '👤' },
   ];
 
+  if (isAdmin || isHR) {
+    menuItems.push({ name: 'users', title: 'Manage Users', icon: '👥' });
+
+  }
+
+  if (isAdmin) {
+    menuItems.push({ name: 'admin', title: 'Admin Panel', icon: '📊' });
+  }
+
   const navigate = (route: string) => {
-    const path = route === 'index' ? '(user)' : '(user)/' + route;
-    router.replace(path as any);
-    props.navigation?.closeDrawer?.();
+    props.navigation?.closeDrawer();
+    if (route === 'index') {
+      router.navigate('/(tabs)');
+    } else if (route === 'admin') {
+      router.navigate('/(admin)');
+    } else if (route === 'users') {
+      router.navigate('/(tabs)/users');
+    } else {
+      router.navigate('/(tabs)/' + route);
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => {
+          dispatch(logout());
+          router.replace('(auth)/login');
+        },
+      },
+    ]);
   };
 
   return (
@@ -31,24 +63,23 @@ function DrawerContent(props: any) {
       <View style={styles.header}>
         <View style={styles.logoContainer}>
           <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>AI</Text>
+            <Text style={styles.logoText}>
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
+            </Text>
           </View>
-          <Text style={styles.appName}>Ai ka Asar</Text>
+          <Text style={styles.appName}>{user?.name || 'User'}</Text>
         </View>
       </View>
-      <View style={styles.diveder}>
-      </View>
-
+      <View style={styles.diveder} />
 
       <View style={styles.section}>
-        {/* <Text style={styles.sectionTitle}>Menu</Text> */}
         <View style={styles.card}>
-          {items.map((item, index) => (
+          {menuItems.map((item, index) => (
             <Pressable
               key={item.name}
               style={[
                 styles.item,
-                index !== items.length - 1 && styles.itemBorder,
+                index !== menuItems.length - 1 && styles.itemBorder,
               ]}
               onPress={() => navigate(item.name)}
             >
@@ -56,12 +87,15 @@ function DrawerContent(props: any) {
                 <Text style={styles.icon}>{item.icon}</Text>
               </View>
               <Text style={styles.itemText}>{item.title}</Text>
-              <View style={styles.arrowContainer}>
-                <Text style={styles.arrow}>›</Text>
-              </View>
             </Pressable>
           ))}
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Pressable style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </Pressable>
       </View>
 
       <View style={styles.footer}>
@@ -77,7 +111,7 @@ export default function TabsLayout() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('(auth)/login' as any);
+      router.replace('(auth)/login');
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -99,55 +133,14 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Drawer.Screen
-        name="index"
-        options={{
-          title: 'Dashboard',
-          headerTitle: 'My Dashboard',
-        }}
-      />
-      <Drawer.Screen
-        name="users"
-        options={{
-          title: 'Community',
-          headerTitle: 'Community Posts',
-        }}
-      />
-      <Drawer.Screen
-        name="admin"
-        options={{
-          title: 'Admin Panel',
-          headerTitle: 'Admin Dashboard',
-        }}
-      />
-      <Drawer.Screen
-        name="impact"
-        options={{
-          title: 'Impact',
-          headerTitle: 'AI Impact',
-        }}
-      />
-      <Drawer.Screen
-        name="career"
-        options={{
-          title: 'Career',
-          headerTitle: 'Career Journey',
-        }}
-      />
-      <Drawer.Screen
-        name="skills"
-        options={{
-          title: 'Skills',
-          headerTitle: 'Skills Analysis',
-        }}
-      />
-      <Drawer.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          headerTitle: 'My Profile',
-        }}
-      />
+      <Drawer.Screen name="index" options={{ title: 'Dashboard' }} />
+      <Drawer.Screen name="community" options={{ title: 'Community' }} />
+      <Drawer.Screen name="impact" options={{ title: 'Impact' }} />
+      <Drawer.Screen name="career" options={{ title: 'Career' }} />
+      <Drawer.Screen name="skills" options={{ title: 'Skills' }} />
+      <Drawer.Screen name="profile" options={{ title: 'Profile' }} />
+      <Drawer.Screen name="users" options={{ title: 'Manage Users' }} />
+      <Drawer.Screen name="admin" options={{ title: 'Admin Panel' }} />
     </Drawer>
   );
 }
@@ -175,11 +168,10 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: spacing.md,
-    display: "flex",
-    flexDirection: "row",
-    justifyContent: "flex-start",
-    alignItems: "center",
-    width: "100%",
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    width: '100%',
   },
   logoCircle: {
     width: 62,
@@ -197,14 +189,14 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   diveder: {
-    width: "100%",
+    width: '100%',
     height: 5,
     borderRadius: 36,
-    backgroundColor: "white",
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: "white",
+    borderColor: 'white',
     elevation: 8,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
@@ -212,44 +204,25 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   logoText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.white,
   },
   appName: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    color: "white",
+    color: 'white',
     marginBottom: spacing.xs,
-    marginLeft: 25
-  },
-  tagline: {
-    fontSize: typography.fontSize.sm,
-    color: colors.auth.textSecondary,
+    marginLeft: 25,
   },
   section: {
     marginBottom: spacing.xl,
   },
-  sectionTitle: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.semibold,
-    color: "white",
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.sm,
-  },
   card: {
-    backgroundColor: "#ffffff08",
-    // borderLeftColor:"#ffffff60",
+    backgroundColor: '#ffffff08',
     borderWidth: 1,
-    borderColor: "#ffffff08",
+    borderColor: '#ffffff08',
     overflow: 'hidden',
-    // elevation: 6,
-    // shadowColor: colors.auth.glow,
-    // shadowOffset: { width: 0, height: 4 },
-    // shadowOpacity: 0.25,
-    // shadowRadius: 12,
   },
   item: {
     flexDirection: 'row',
@@ -258,19 +231,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   itemBorder: {
-    borderBottomColor: "#ffffff0c",
+    borderBottomColor: '#ffffff0c',
     borderBottomWidth: 3,
   },
   iconContainer: {
     width: 36,
     height: 36,
     borderRadius: borderRadius.md,
-    backgroundColor: "#ffffff08",
+    backgroundColor: '#ffffff08',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: spacing.md,
     borderWidth: 1,
-    borderColor: "#ffffff28",
+    borderColor: '#ffffff28',
   },
   icon: {
     fontSize: 18,
@@ -279,18 +252,19 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
-    color: "white",
+    color: 'white',
   },
-  arrowContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
+  logoutButton: {
+    backgroundColor: '#ef4444',
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
+    marginTop: spacing.md,
   },
-  arrow: {
-    fontSize: 20,
-    color: "white",
-    fontWeight: '300',
+  logoutText: {
+    color: 'white',
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
   },
   footer: {
     marginTop: 'auto',

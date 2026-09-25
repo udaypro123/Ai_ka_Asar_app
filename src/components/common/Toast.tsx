@@ -102,9 +102,9 @@ function AnimatedToast({ message, type, backgroundColor }: { message: string; ty
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    left: 10,
-    right: 10,
-    bottom: 10,
+    left: 5,
+    right: 0,
+    bottom: 50,
     paddingVertical: spacing.sm + 4,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 3,
     zIndex: 9999,
   },
   message: {

@@ -1,5 +1,5 @@
 {
-  "name": "ai-ka-asar-mobile",
+  "name": "AIMarg-mobile",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
@@ -14,11 +14,13 @@
     "@expo/ui": "~57.0.15",
     "@expo/vector-icons": "^15.0.2",
     "@hookform/resolvers": "^3.6.0",
+    "@react-navigation/drawer": "^7.14.2",
     "@reduxjs/toolkit": "^2.2.1",
     "axios": "^1.7.7",
     "expo": "~57.0.19",
     "expo-constants": "~57.0.17",
     "expo-device": "~57.0.1",
+    "expo-document-picker": "~57.0.2",
     "expo-font": "~57.0.3",
     "expo-glass-effect": "~57.0.1",
     "expo-image": "~57.0.4",

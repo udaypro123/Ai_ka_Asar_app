@@ -1,13 +1,15 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, Alert, Linking } from 'react-native';
 import { useState, useEffect, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../../src/store/hooks';
 import { updateProfile } from '../../src/store/slices/authSlice';
 import { postService, commentService, likeService } from '../../src/services/social.service';
+import { userService } from '../../src/services/user.service';
 import { Post, Comment } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '@/theme';
 import { GradientScrollView } from '@/components/common/BackgroundGradient';
 import { useToast } from '@/components/common/Toast';
 import { useRouter } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 
 export default function HomeScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -16,15 +18,22 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const [profile, setProfile] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
     mobile: user?.mobile || '',
     currentRole: user?.currentRole || '',
     previousRole: user?.previousRole || '',
+    previousCompany: user?.previousCompany || '',
     company: user?.company || '',
+    jobDescription: user?.jobDescription || '',
     skills: user?.skills?.join(', ') || '',
-    aiImpactStatus: user?.aiImpactStatus || '',
-    aiUsage: user?.aiUsage || '',
+    linkedinUrl: user?.linkedinUrl || '',
+    githubUrl: user?.githubUrl || '',
   });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [resumeName, setResumeName] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
@@ -47,6 +56,53 @@ export default function HomeScreen() {
     if (hour >= 17 && hour < 21) return 'Good Evening';
     return 'Good Night';
   }, []);
+
+  useEffect(() => {
+    if (user?.resume) {
+      setResumeName(user.resume.split('/').pop() || 'Resume uploaded');
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    setLoadingProfile(true);
+    try {
+      const data = await userService.getProfile();
+      setProfile({
+        name: data.name || '',
+        email: data.email || '',
+        mobile: data.mobile || '',
+        currentRole: data.currentRole || '',
+        previousRole: data.previousRole || '',
+        previousCompany: data.previousCompany || '',
+        company: data.company || '',
+        jobDescription: data.jobDescription || '',
+        skills: data.skills?.join(', ') || '',
+        linkedinUrl: data.linkedinUrl || '',
+        githubUrl: data.githubUrl || '',
+      });
+      if (data.resume) {
+        setResumeName(data.resume.split('/').pop() || 'Resume uploaded');
+      }
+      console.log('[HomeScreen] profile fetched:', data);
+    } catch (error) {
+      console.error('[HomeScreen] failed to fetch profile:', error);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const isProfileComplete = useMemo(() => {
+    return !!(
+      profile.currentRole &&
+      profile.company &&
+      profile.skills &&
+      profile.mobile
+    );
+  }, [profile]);
 
   const loadMyPosts = async () => {
     setLoadingPosts(true);
@@ -71,23 +127,59 @@ export default function HomeScreen() {
         .split(',')
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
+      console.log('[HomeScreen] saving profile:', { ...profile, skills: skillsArray });
       await dispatch(
         updateProfile({
+          name: profile.name,
+          email: profile.email,
           mobile: profile.mobile,
           currentRole: profile.currentRole,
           previousRole: profile.previousRole,
+          previousCompany: profile.previousCompany,
           company: profile.company,
+          jobDescription: profile.jobDescription,
           skills: skillsArray,
-          aiImpactStatus: profile.aiImpactStatus,
-          aiUsage: profile.aiUsage,
+          linkedinUrl: profile.linkedinUrl.trim() ? profile.linkedinUrl.trim() : undefined,
+          githubUrl: profile.githubUrl.trim() ? profile.githubUrl.trim() : undefined,
         } as any)
       ).unwrap();
       toast.showToast('Profile updated', 'success');
+      fetchProfile();
     } catch (error) {
       toast.showToast('Failed to update profile', 'error');
     } finally {
       setSavingProfile(false);
     }
+  };
+
+  const handleResumePick = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+      });
+      if (!result.canceled && result.assets?.[0]) {
+        setUploading(true);
+        try {
+          await userService.uploadResume({
+            uri: result.assets[0].uri,
+            name: result.assets[0].name,
+            type: result.assets[0].mimeType || 'application/pdf',
+          } as any);
+          setResumeName(result.assets[0].name);
+          toast.showToast('Resume uploaded', 'success');
+        } catch {
+          toast.showToast('Failed to upload resume', 'error');
+        } finally {
+          setUploading(false);
+        }
+      }
+    } catch {
+      toast.showToast('Failed to pick document', 'error');
+    }
+  };
+
+  const handleImpactPress = () => {
+    router.push('/(tabs)/profile');
   };
 
   const openCreateThought = () => {
@@ -140,26 +232,6 @@ export default function HomeScreen() {
     } finally {
       setSavingPost(false);
     }
-  };
-
-  const handleDeletePost = (postId: string) => {
-    // Delete functionality is available but hidden from UI
-    Alert.alert('Delete Thought', 'Are you sure you want to delete this thought?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await postService.deletePost(postId);
-            toast.showToast('Thought deleted', 'success');
-            loadMyPosts();
-          } catch (error) {
-            toast.showToast('Failed to delete thought', 'error');
-          }
-        },
-      },
-    ]);
   };
 
   const openPostDetail = async (post: Post) => {
@@ -216,81 +288,86 @@ export default function HomeScreen() {
     <GradientScrollView contentContainerStyle={styles.content}>
       <Text style={styles.greeting}>{greeting}, {user?.name?.split(' ')?.[0] || 'User'}</Text>
 
-      <Pressable style={styles.userCountCard} onPress={() => router.push('/(tabs)/users')}>
-        <Text style={styles.userCountLabel}>Community</Text>
-        <Text style={styles.userCountValue}>See all users and posts</Text>
-        <Text style={styles.userCountArrow}>›</Text>
-      </Pressable>
+      {loadingProfile && (
+        <View style={styles.loadingRow}>
+          <Text style={styles.loadingText}>Refreshing profile...</Text>
+        </View>
+      )}
 
-      <Text style={styles.sectionTitle}>Your Professional Details</Text>
-      <View style={styles.card}>
-        <View style={styles.profileRow}>
-          <Text style={styles.profileLabel}>Current Role</Text>
-          <TextInput
-            style={styles.profileInput}
-            value={profile.currentRole}
-            onChangeText={(text) => setProfile({ ...profile, currentRole: text })}
-            placeholder="e.g. Software Engineer"
-          />
+      <View style={styles.resumeCard}>
+        <View style={styles.resumeHeader}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarInitial}>
+              {profile.name?.charAt(0).toUpperCase() || 'U'}
+            </Text>
+          </View>
+          <View style={styles.resumeHeaderText}>
+            <Text style={styles.resumeName}>{profile.name || 'User'}</Text>
+            <Text style={styles.resumeRole}>{profile.currentRole || 'No role set'}{profile.company ? ` at ${profile.company}` : ''}</Text>
+            <Text style={styles.resumeContact}>{profile.email} {profile.mobile ? `| ${profile.mobile}` : ''}</Text>
+          </View>
         </View>
-        <View style={styles.profileRow}>
-          <Text style={styles.profileLabel}>Previous Role</Text>
-          <TextInput
-            style={styles.profileInput}
-            value={profile.previousRole}
-            onChangeText={(text) => setProfile({ ...profile, previousRole: text })}
-            placeholder="e.g. Junior Developer"
-          />
-        </View>
-        <View style={styles.profileRow}>
-          <Text style={styles.profileLabel}>Company / Organization</Text>
-          <TextInput
-            style={styles.profileInput}
-            value={profile.company}
-            onChangeText={(text) => setProfile({ ...profile, company: text })}
-            placeholder="e.g. Google, Microsoft"
-          />
-        </View>
-        <View style={styles.profileRow}>
-          <Text style={styles.profileLabel}>Skills (comma separated)</Text>
-          <TextInput
-            style={[styles.profileInput, styles.textArea]}
-            value={profile.skills}
-            onChangeText={(text) => setProfile({ ...profile, skills: text })}
-            placeholder="e.g. React, Node.js, Python"
-            multiline
-            numberOfLines={2}
-            textAlignVertical="top"
-          />
-        </View>
-        <View style={styles.profileRow}>
-          <Text style={styles.profileLabel}>Mobile Number (for HR contact)</Text>
-          <TextInput
-            style={styles.profileInput}
-            value={profile.mobile}
-            onChangeText={(text) => setProfile({ ...profile, mobile: text })}
-            placeholder="+92 300 1234567"
-            keyboardType="phone-pad"
-          />
-        </View>
-        <Pressable style={styles.saveButton} onPress={handleSaveProfile} disabled={savingProfile}>
-          <Text style={styles.saveButtonText}>{savingProfile ? 'Saving...' : 'Save Details'}</Text>
-        </Pressable>
-      </View>
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>My AI Impact Thought</Text>
-        {posts.length === 0 ? (
-          <Pressable style={styles.createButton} onPress={openCreateThought}>
-            <Text style={styles.createButtonText}>+ Share Thought</Text>
-          </Pressable>
-        ) : (
-          <Pressable style={styles.editButton} onPress={() => openEditThought(posts[0])}>
-            <Text style={styles.editButtonText}>Edit</Text>
-          </Pressable>
+        <View style={styles.divider} />
+
+        {profile.previousRole || profile.previousCompany ? (
+          <>
+            <Text style={styles.sectionLabel}>Previous Experience</Text>
+            <Text style={styles.sectionValue}>
+              {profile.previousRole || ''}{profile.previousRole && profile.previousCompany ? ' at ' : ''}{profile.previousCompany || ''}
+            </Text>
+          </>
+        ) : null}
+
+        <Text style={styles.sectionLabel}>About</Text>
+        <Text style={styles.sectionValue}>{profile.jobDescription || 'No description provided'}</Text>
+
+        <Text style={styles.sectionLabel}>Skills</Text>
+        <View style={styles.skillsContainer}>
+          {profile.skills ? (
+            profile.skills.split(',').map((skill, index) => (
+              <View key={index} style={styles.skillBadge}>
+                <Text style={styles.skillText}>{skill.trim()}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.sectionValue}>No skills added</Text>
+          )}
+        </View>
+
+        {(profile.linkedinUrl || profile.githubUrl) && (
+          <>
+            <Text style={styles.sectionLabel}>Profiles</Text>
+            <View style={styles.linksRow}>
+              {profile.linkedinUrl ? (
+                <Pressable style={styles.linkButton} onPress={() => Linking.openURL(profile.linkedinUrl.startsWith('http') ? profile.linkedinUrl : `https://${profile.linkedinUrl}`)}>
+                  <Text style={styles.linkButtonText}>LinkedIn</Text>
+                </Pressable>
+              ) : null}
+              {profile.githubUrl ? (
+                <Pressable style={styles.linkButton} onPress={() => Linking.openURL(profile.githubUrl.startsWith('http') ? profile.githubUrl : `https://${profile.githubUrl}`)}>
+                  <Text style={styles.linkButtonText}>GitHub</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </>
+        )}
+
+        {resumeName && (
+          <>
+            <Text style={styles.sectionLabel}>Resume</Text>
+            <Pressable style={styles.resumeButton} onPress={() => {}}>
+              <Text style={styles.resumeButtonText}>Resume Attached: {resumeName}</Text>
+            </Pressable>
+          </>
         )}
       </View>
 
+      <Pressable style={styles.impactButton} onPress={handleImpactPress}>
+        <Text style={styles.impactButtonText}>Add Impact</Text>
+      </Pressable>
+
+      <Text style={styles.sectionTitle}>My AI Impact Thought</Text>
       {posts.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>You haven't shared your AI impact thought yet.</Text>
@@ -307,9 +384,6 @@ export default function HomeScreen() {
                 <Pressable onPress={() => openEditThought(post)}>
                   <Text style={styles.actionText}>Edit</Text>
                 </Pressable>
-                {/* <Pressable onPress={() => handleDeletePost(post._id)}>
-                  <Text style={[styles.actionText, styles.deleteText]}>Delete</Text>
-                </Pressable> */}
               </View>
             </View>
             <Text style={styles.postContent} numberOfLines={4}>{post.content}</Text>
@@ -401,7 +475,7 @@ export default function HomeScreen() {
                 <View style={styles.commentsSection}>
                   <Text style={styles.commentsTitle}>Comments ({selectedPost.commentCount})</Text>
                   {loadingComments ? (
-                    <Text style={styles.loadingText}>Loading comments...</Text>
+                    <Text >Loading comments...</Text>
                   ) : (
                     comments.map((comment) => (
                       <View key={comment._id} style={styles.commentItem}>
@@ -449,48 +523,37 @@ const styles = StyleSheet.create({
     color: colors.auth.text,
     marginBottom: spacing.lg,
   },
-  userCountCard: {
-    backgroundColor: colors.auth.cardBg,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+  impactButton: {
+    backgroundColor: colors.secondary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.auth.cardBorder,
-    elevation: 6,
-    shadowColor: colors.auth.glow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderColor: colors.primaryDark,
+    elevation: 4,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
   },
-  userCountLabel: {
+  impactButtonText: {
+    color: colors.white,
     fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.auth.text,
-  },
-  userCountValue: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary,
     fontWeight: typography.fontWeight.semibold,
   },
-  userCountArrow: {
-    fontSize: 24,
+  loadingRow: {
+    marginBottom: spacing.md,
+  },
+  loadingText: {
+    fontSize: typography.fontSize.sm,
     color: colors.auth.textSecondary,
-    fontWeight: '300',
+    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
     color: colors.auth.text,
-    marginBottom: spacing.md,
-    marginTop: spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: spacing.md,
     marginTop: spacing.lg,
   },
@@ -528,6 +591,26 @@ const styles = StyleSheet.create({
     minHeight: 60,
     textAlignVertical: 'top',
   },
+  uploadButton: {
+    backgroundColor: colors.secondary,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primaryDark,
+  },
+  uploadButtonText: {
+    color: colors.white,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  fileName: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
   saveButton: {
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
@@ -546,34 +629,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
-  },
-  createButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-  },
-  createButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  editButton: {
-    backgroundColor: colors.secondary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-  },
-  editButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  loadingText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.auth.textSecondary,
-    textAlign: 'center',
-    paddingVertical: spacing.md,
   },
   emptyCard: {
     backgroundColor: colors.auth.cardBg,
@@ -848,5 +903,122 @@ const styles = StyleSheet.create({
     color: colors.auth.textSecondary,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
+  },
+  resumeCard: {
+    backgroundColor: colors.auth.cardBg,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.auth.cardBorder,
+    elevation: 6,
+    shadowColor: colors.auth.glow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    marginBottom: spacing.lg,
+  },
+  resumeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  avatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  avatarInitial: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.white,
+  },
+  resumeHeaderText: {
+    flex: 1,
+  },
+  resumeName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.auth.text,
+    marginBottom: spacing.xs,
+  },
+  resumeRole: {
+    fontSize: typography.fontSize.base,
+    color: colors.primary,
+    fontWeight: typography.fontWeight.semibold,
+    marginBottom: spacing.xs,
+  },
+  resumeContact: {
+    fontSize: typography.fontSize.sm,
+    color: colors.auth.textSecondary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.auth.cardBorder,
+    marginVertical: spacing.md,
+  },
+  sectionLabel: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.auth.textSecondary,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  sectionValue: {
+    fontSize: typography.fontSize.base,
+    color: colors.auth.text,
+    lineHeight: 22,
+  },
+  skillsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  skillBadge: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+  },
+  skillText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primaryDark,
+  },
+  linksRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  linkButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  linkButtonText: {
+    color: colors.white,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  resumeButton: {
+    backgroundColor: colors.secondary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  resumeButtonText: {
+    color: colors.white,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
 });

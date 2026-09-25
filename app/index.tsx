@@ -1,15 +1,19 @@
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Image, Dimensions, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect } from 'react';
-import { useNavigation } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { useAppDispatch, useAppSelector } from '../src/store/hooks';
 import { checkAuth } from '../src/store/slices/authSlice';
 import { colors } from '../src/theme';
 
+const { width, height } = Dimensions.get('window');
+
 export default function Index() {
   const dispatch = useAppDispatch();
-  const navigation = useNavigation();
+  const router = useRouter();
   const { isAuthenticated, isLoading, user } = useAppSelector((state) => state.auth);
+  const [showSplash, setShowSplash] = useState(true);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const initialize = async () => {
@@ -23,25 +27,53 @@ export default function Index() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && !showSplash) {
       if (isAuthenticated && user) {
         if (user.roles && user.roles.length > 0) {
           const role = user.roles[0];
           if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-            navigation.replace('(admin)' as any);
+            router.replace('(admin)');
           } else if (role === 'HR') {
-            navigation.replace('(hr)' as any);
+            router.replace('(hr)');
           } else {
-            navigation.replace('(user)' as any);
+            router.replace('(tabs)');
           }
         } else {
-          navigation.replace('(onboarding)' as any);
+          router.replace('(onboarding)');
         }
       } else {
-        navigation.replace('(auth)' as any);
+        router.replace('(auth)/login');
       }
     }
-  }, [isLoading, isAuthenticated, user, navigation]);
+  }, [isLoading, isAuthenticated, user, showSplash, router]);
+
+  useEffect(() => {
+    if (showSplash) {
+      const timer = setTimeout(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowSplash(false);
+        });
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [showSplash, fadeAnim]);
+
+  if (showSplash) {
+    return (
+      <View style={styles.splashContainer}>
+        <Image
+          source={require('../assets/aimarg.gif')}
+          style={styles.gif}
+          resizeMode="contain"
+        />
+      </View>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -60,6 +92,16 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
+  splashContainer: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gif: {
+    width: width * 0.7,
+    height: height * 0.4,
+  },
   container: {
     flex: 1,
     justifyContent: 'center',

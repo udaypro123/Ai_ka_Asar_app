@@ -1,18 +1,18 @@
 import { View, Text, Pressable, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import { useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { colors, typography, spacing, borderRadius } from '@/theme';
 
 const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const [currentStep, setCurrentStep] = useState(0);
-  const navigation = useNavigation();
+  const router = useRouter();
 
   const steps = [
     {
-      title: 'Welcome to AI Ka Asar',
+      title: 'Welcome to AIMarg',
       description: 'Understand how AI is changing your work and discover your next career step.',
       icon: '👋',
     },
@@ -42,12 +42,12 @@ export default function WelcomeScreen() {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      navigation.replace('(auth)');
+      router.replace('(auth)');
     }
   };
 
   const handleSkip = () => {
-    navigation.replace('(auth)');
+    router.replace('(auth)');
   };
 
   return (

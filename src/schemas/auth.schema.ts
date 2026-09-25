@@ -30,4 +30,12 @@ export const profileSchema = z.object({
   skills: z.array(z.string()).optional(),
   careerGoal: z.string().optional(),
   aiUsage: z.string().optional(),
+  mobile: z.string().optional(),
+  currentRole: z.string().optional(),
+  previousRole: z.string().optional(),
+  previousCompany: z.string().optional(),
+  company: z.string().optional(),
+  jobDescription: z.string().optional(),
+  linkedinUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
+  githubUrl: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
 });

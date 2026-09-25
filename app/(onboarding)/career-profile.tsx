@@ -1,6 +1,6 @@
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useState } from 'react';
-import { useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useToast } from '../../src/components/common/Toast';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, typography, spacing, borderRadius } from '@/theme';
@@ -10,7 +10,7 @@ export default function CareerProfileScreen() {
   const [employmentStatus, setEmploymentStatus] = useState('');
   const [skills, setSkills] = useState('');
   const [careerGoal, setCareerGoal] = useState('');
-  const navigation = useNavigation();
+  const router = useRouter();
   const toast = useToast();
 
   const handleNext = () => {
@@ -18,7 +18,7 @@ export default function CareerProfileScreen() {
       toast.showToast('Please select your employment status', 'error');
       return;
     }
-    navigation.replace('(onboarding)/assessment');
+    router.replace('(onboarding)/assessment');
   };
 
   return (

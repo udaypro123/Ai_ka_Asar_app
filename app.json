@@ -1,28 +1,28 @@
 {
   "expo": {
-    "name": "AI Ka Asar",
-    "slug": "ai-ka-asar",
+    "name": "AIMarg",
+    "slug": "AIMarg",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0047ec"
     },
     "assetBundlePatterns": ["**/*"],
-    "scheme": "aikaasar",
+    "scheme": "AIMarg",
   "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aikaasar.app"
+      "bundleIdentifier": "com.AIMarg.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.aikaasar.app",
+      "package": "com.AIMarg.app",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",

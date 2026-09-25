@@ -1,13 +1,13 @@
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useState } from 'react';
-import { useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useToast } from '../../src/components/common/Toast';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, typography, spacing, borderRadius } from '@/theme';
 
 export default function AssessmentScreen() {
   const [selectedStatus, setSelectedStatus] = useState('');
-  const navigation = useNavigation();
+  const router = useRouter();
   const toast = useToast();
 
   const employmentOptions = [
@@ -37,7 +37,7 @@ export default function AssessmentScreen() {
       toast.showToast('Please select your employment status', 'error');
       return;
     }
-      navigation.replace('(user)' as any);
+      router.replace('(user)' as any);
   };
 
   return (

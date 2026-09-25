@@ -1,5 +1,5 @@
 import api from '../config/api';
-import { Post, Comment, LikeResponse } from '../types';
+import { Post, Comment, LikeResponse, User } from '../types';
 
 export const postService = {
   createPost: async (data: { title: string; content: string; category?: string }): Promise<Post> => {
@@ -51,4 +51,40 @@ export const likeService = {
   },
 };
 
-export default { postService, commentService, likeService };
+export const adminService = {
+  getAllUsers: async (): Promise<User[]> => {
+    const response = await api.get('/admin/public/users');
+    return response.data.data;
+  },
+
+  getUserById: async (userId: string): Promise<User> => {
+    const response = await api.get(`/admin/users/${userId}`);
+    return response.data.data;
+  },
+};
+
+export const userLikeService = {
+  toggleUserLike: async (userId: string, targetUserId: string): Promise<{ liked: boolean }> => {
+    const response = await api.post(`/user-likes/${targetUserId}`);
+    return response.data.data;
+  },
+
+  getUserLikes: async (targetUserId: string): Promise<string[]> => {
+    const response = await api.get(`/user-likes/${targetUserId}`);
+    return response.data.data;
+  },
+};
+
+export const userCommentService = {
+  createUserComment: async (data: { targetUserId: string; content: string }): Promise<any> => {
+    const response = await api.post('/user-comments', data);
+    return response.data.data;
+  },
+
+  getUserComments: async (targetUserId: string): Promise<any[]> => {
+    const response = await api.get(`/user-comments/${targetUserId}`);
+    return response.data.data;
+  },
+};
+
+export default { postService, commentService, likeService, adminService, userLikeService, userCommentService };
