@@ -15,7 +15,7 @@ export default function SplashScreen() {
       InteractionManager.runAfterInteractions(() => {
         if (!hasNavigated.current) {
           hasNavigated.current = true;
-          router.replace('index');
+          router.replace('/');
         }
       });
     }, 3000);

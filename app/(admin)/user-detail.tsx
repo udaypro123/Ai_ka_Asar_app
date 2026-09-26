@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { useAppSelector } from '../../src/store/hooks';
@@ -6,6 +6,7 @@ import { adminService } from '../../src/services/admin.service';
 import { User } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
+import { openExternalUrl } from '../../src/utils/externalLinks';
 
 export default function UserDetailScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
@@ -26,16 +27,13 @@ export default function UserDetailScreen() {
       const data = await adminService.getUserById(userId as string);
       setProfile(data as User);
     } catch (error) {
-      console.error('Failed to load user:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const openLink = (url?: string) => {
-    if (url) {
-      Linking.openURL(url);
-    }
+    void openExternalUrl(url);
   };
 
   if (!isAdmin) {
@@ -138,9 +136,7 @@ export default function UserDetailScreen() {
         {profile.resume && (
           <>
             <Text style={styles.sectionTitle}>Resume</Text>
-            <Pressable style={styles.resumeButton} onPress={() => openLink(profile.resume ? `http://192.168.29.243:5000${profile.resume}` : undefined)}>
-              <Text style={styles.resumeButtonText}>View Resume</Text>
-            </Pressable>
+            <Text style={styles.infoValue}>Resume is stored privately and is not available through a public link.</Text>
           </>
         )}
       </View>

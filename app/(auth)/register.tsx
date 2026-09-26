@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  Pressable,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -23,7 +22,6 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<'USER' | 'HR'>('USER');
 
   const dispatch = useAppDispatch();
   const { isLoading, error, isAuthenticated, user } = useAppSelector(
@@ -111,48 +109,10 @@ export default function RegisterScreen() {
             onToggleSecure={() => setShowPassword((prev) => !prev)}
           />
 
-          <Text style={styles.roleLabel}>I am a:</Text>
-
-          <View style={styles.roleContainer}>
-            <Pressable
-              style={[
-                styles.roleButton,
-                role === 'USER' && styles.roleButtonActive,
-              ]}
-              onPress={() => setRole('USER')}
-            >
-              <Text
-                style={[
-                  styles.roleButtonText,
-                  role === 'USER' && styles.roleButtonTextActive,
-                ]}
-              >
-                USER
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={[
-                styles.roleButton,
-                role === 'HR' && styles.roleButtonActive,
-              ]}
-              onPress={() => setRole('HR')}
-            >
-              <Text
-                style={[
-                  styles.roleButtonText,
-                  role === 'HR' && styles.roleButtonTextActive,
-                ]}
-              >
-                HR
-              </Text>
-            </Pressable>
-          </View>
-
           <AuthButton
             title="Sign Up"
             onPress={() =>
-              dispatch(register({ name, email, password, role }))
+              dispatch(register({ name, email, password }))
             }
             loading={isLoading}
           />

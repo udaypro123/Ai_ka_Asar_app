@@ -30,7 +30,6 @@ export default function AdminDashboardScreen() {
       setStats(statsData);
       setActivity(activityData);
     } catch (error) {
-      console.error('Failed to load admin data:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

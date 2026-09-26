@@ -1,70 +1,81 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig, create } from 'axios';
 import { env } from './env';
+import { storage } from '../utils/storage';
+import { apiLoading } from '../utils/apiLoading';
 
 const API_BASE_URL = env.EXPO_PUBLIC_API_URL;
-console.log('[api] API_BASE_URL:', API_BASE_URL);
+const refreshClient = create({
+  timeout: 15000,
+  headers: { Accept: 'application/json' },
+});
 
-const apiClient: AxiosInstance = axios.create({
+const apiClient: AxiosInstance = create({
   baseURL: API_BASE_URL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
+    Accept: 'application/json',
   },
 });
 
-apiClient.interceptors.request.use(async (config) => {
-  try {
-    const accessToken = await SecureStore.getItemAsync('accessToken');
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-    console.log('[api] request:', {
-      method: config.method,
-      url: config.url,
-      hasAuth: !!accessToken,
-      contentType: config.headers['Content-Type'],
+type RetriableRequest = InternalAxiosRequestConfig & { _retry?: boolean; _loaderTracked?: boolean };
+let refreshRequest: Promise<string> | null = null;
+
+const refreshAccessToken = (): Promise<string> => {
+  if (!refreshRequest) {
+    refreshRequest = (async () => {
+      const refreshToken = await storage.getItem('refreshToken');
+      if (!refreshToken) throw new Error('No refresh token');
+
+      const response = await refreshClient.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+      const { accessToken, refreshToken: rotatedRefreshToken } = response.data.data;
+      if (typeof accessToken !== 'string' || typeof rotatedRefreshToken !== 'string') {
+        throw new Error('Invalid refresh response');
+      }
+      await storage.setAuthTokens(accessToken, rotatedRefreshToken);
+      return accessToken;
+    })().finally(() => {
+      refreshRequest = null;
     });
-  } catch (error) {
-    console.error('Error retrieving access token:', error);
+  }
+  return refreshRequest;
+};
+
+apiClient.interceptors.request.use(async (config) => {
+  const accessToken = await storage.getItem('accessToken');
+  if (accessToken) config.headers.set('Authorization', `Bearer ${accessToken}`);
+  const trackedConfig = config as RetriableRequest;
+  if (!trackedConfig._loaderTracked) {
+    trackedConfig._loaderTracked = true;
+    apiLoading.start();
   }
   return config;
 });
 
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    console.log('[api] request failed:', {
-      url: originalRequest?.url,
-      baseURL: originalRequest?.baseURL,
-      method: originalRequest?.method,
-      message: error.message,
-      code: error.code,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
-    if (error.response?.status === 401 && !originalRequest._retry) {
+  (response: AxiosResponse) => {
+    const config = response.config as RetriableRequest;
+    if (config._loaderTracked) apiLoading.finish();
+    return response;
+  },
+  async (error: AxiosResponse | any) => {
+    const originalRequest = error.config as RetriableRequest | undefined;
+    const isAuthRequest = /\/auth\/(login|register|refresh|logout|forgot-password|reset-password|verify-email)/.test(
+      originalRequest?.url ?? ''
+    );
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthRequest) {
       originalRequest._retry = true;
       try {
-        const refreshToken = await SecureStore.getItemAsync('refreshToken');
-        if (!refreshToken) {
-          await SecureStore.deleteItemAsync('accessToken');
-          return Promise.reject(error);
-        }
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refreshToken,
-        });
-        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-        await SecureStore.setItemAsync('accessToken', accessToken);
-        await SecureStore.setItemAsync('refreshToken', newRefreshToken);
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        const accessToken = await refreshAccessToken();
+        originalRequest.headers.set('Authorization', `Bearer ${accessToken}`);
         return apiClient(originalRequest);
-      } catch (refreshError) {
-        await SecureStore.deleteItemAsync('accessToken');
-        await SecureStore.deleteItemAsync('refreshToken');
-        return Promise.reject(refreshError);
+      } catch {
+        await storage.clearAuthTokens().catch(() => undefined);
+        if (originalRequest._loaderTracked) apiLoading.finish();
+        return Promise.reject(error);
       }
     }
+    if (originalRequest?._loaderTracked) apiLoading.finish();
     return Promise.reject(error);
   }
 );

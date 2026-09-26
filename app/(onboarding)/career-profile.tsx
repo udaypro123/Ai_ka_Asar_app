@@ -18,7 +18,7 @@ export default function CareerProfileScreen() {
       toast.showToast('Please select your employment status', 'error');
       return;
     }
-    router.replace('(onboarding)/assessment');
+    router.replace('/(onboarding)/assessment');
   };
 
   return (

@@ -1,4 +1,6 @@
 import api from '../config/api';
+import { User } from '../types';
+import { storage } from '../utils/storage';
 
 export interface LoginData {
   email: string;
@@ -9,11 +11,10 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
-  role?: string;
 }
 
 export interface AuthResponse {
-  user: any;
+  user: User;
   accessToken: string;
   refreshToken: string;
 }
@@ -25,14 +26,13 @@ const authService = {
   },
 
   register: async (data: RegisterData): Promise<AuthResponse> => {
-    console.log('[authService] register payload:', data);
     const response = await api.post('/auth/register', data);
-    console.log('[authService] register response:', response.data);
     return response.data.data;
   },
 
-  logout: async (refreshToken: string): Promise<void> => {
-    await api.post('/auth/logout', { refreshToken });
+  logout: async (): Promise<void> => {
+    const refreshToken = await storage.getItem('refreshToken');
+    if (refreshToken) await api.post('/auth/logout', { refreshToken });
   },
 
   refreshToken: async (refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> => {
@@ -40,9 +40,8 @@ const authService = {
     return response.data.data;
   },
 
-  forgotPassword: async (email: string): Promise<{ resetToken: string }> => {
-    const response = await api.post('/auth/forgot-password', { email });
-    return response.data.data;
+  forgotPassword: async (email: string): Promise<void> => {
+    await api.post('/auth/forgot-password', { email });
   },
 
   resetPassword: async (token: string, password: string): Promise<void> => {

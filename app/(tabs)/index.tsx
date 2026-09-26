@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, Alert } from 'react-native';
 import { useState, useEffect, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../../src/store/hooks';
 import { updateProfile } from '../../src/store/slices/authSlice';
@@ -10,6 +10,7 @@ import { GradientScrollView } from '@/components/common/BackgroundGradient';
 import { useToast } from '@/components/common/Toast';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
+import { openExternalUrl } from '../../src/utils/externalLinks';
 
 export default function HomeScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -83,9 +84,7 @@ export default function HomeScreen() {
       if (data.resume) {
         setResumeName(data.resume.split('/').pop() || 'Resume uploaded');
       }
-      console.log('[HomeScreen] profile fetched:', data);
     } catch (error) {
-      console.error('[HomeScreen] failed to fetch profile:', error);
     } finally {
       setLoadingProfile(false);
     }
@@ -110,7 +109,6 @@ export default function HomeScreen() {
       const data = await postService.getMyPosts();
       setPosts(data);
     } catch (error) {
-      console.error('Failed to load posts:', error);
     } finally {
       setLoadingPosts(false);
     }
@@ -127,7 +125,6 @@ export default function HomeScreen() {
         .split(',')
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
-      console.log('[HomeScreen] saving profile:', { ...profile, skills: skillsArray });
       await dispatch(
         updateProfile({
           name: profile.name,
@@ -241,7 +238,6 @@ export default function HomeScreen() {
       const data = await commentService.getComments(post._id);
       setComments(data);
     } catch (error) {
-      console.error('Failed to load comments:', error);
     } finally {
       setLoadingComments(false);
     }
@@ -340,12 +336,12 @@ export default function HomeScreen() {
             <Text style={styles.sectionLabel}>Profiles</Text>
             <View style={styles.linksRow}>
               {profile.linkedinUrl ? (
-                <Pressable style={styles.linkButton} onPress={() => Linking.openURL(profile.linkedinUrl.startsWith('http') ? profile.linkedinUrl : `https://${profile.linkedinUrl}`)}>
+                <Pressable style={styles.linkButton} onPress={() => void openExternalUrl(profile.linkedinUrl)}>
                   <Text style={styles.linkButtonText}>LinkedIn</Text>
                 </Pressable>
               ) : null}
               {profile.githubUrl ? (
-                <Pressable style={styles.linkButton} onPress={() => Linking.openURL(profile.githubUrl.startsWith('http') ? profile.githubUrl : `https://${profile.githubUrl}`)}>
+                <Pressable style={styles.linkButton} onPress={() => void openExternalUrl(profile.githubUrl)}>
                   <Text style={styles.linkButtonText}>GitHub</Text>
                 </Pressable>
               ) : null}

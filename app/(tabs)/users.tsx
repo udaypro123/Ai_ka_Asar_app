@@ -27,7 +27,6 @@ export default function UsersListScreen() {
       const data = await adminService.getAllUsers();
       setUsers(data);
     } catch (error) {
-      console.error('Failed to load users:', error);
     } finally {
       setLoading(false);
     }

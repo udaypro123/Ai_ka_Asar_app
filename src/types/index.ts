@@ -20,6 +20,7 @@ export interface User {
   linkedinUrl?: string;
   githubUrl?: string;
   resume?: string;
+  isBlocked?: boolean;
   isEmailVerified: boolean;
   roles: string[];
   createdAt: string;

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { storage } from '../../utils/storage';
-import authService from '../../services/auth.service';
+import authService, { RegisterData } from '../../services/auth.service';
 import { User } from '../../types';
 import { userService } from '../../services/user.service';
 
@@ -24,16 +24,18 @@ const initialState: AuthState = {
 
 export const checkAuth = createAsyncThunk('auth/checkAuth', async (_, { rejectWithValue }) => {
   try {
-    const accessToken = await storage.getItem('accessToken');
-    const refreshToken = await storage.getItem('refreshToken');
-    if (!accessToken) {
+    const storedAccessToken = await storage.getItem('accessToken');
+    const storedRefreshToken = await storage.getItem('refreshToken');
+    if (!storedAccessToken && !storedRefreshToken) {
       return rejectWithValue(null);
     }
     const response = await authService.getProfile();
-    return { user: response.data, accessToken, refreshToken: refreshToken || '' };
-  } catch (error) {
-    await storage.removeItem('accessToken');
-    await storage.removeItem('refreshToken');
+    const accessToken = await storage.getItem('accessToken');
+    const refreshToken = await storage.getItem('refreshToken');
+    if (!accessToken || !refreshToken) return rejectWithValue(null);
+    return { user: response, accessToken, refreshToken };
+  } catch {
+    await storage.clearAuthTokens().catch(() => undefined);
     return rejectWithValue(null);
   }
 });
@@ -43,39 +45,33 @@ export const login = createAsyncThunk(
   async (credentials: { email: string; password: string }, { rejectWithValue }) => {
     try {
       const response = await authService.login(credentials);
-      await storage.setItem('accessToken', response.accessToken);
-      await storage.setItem('refreshToken', response.refreshToken);
+      await storage.setAuthTokens(response.accessToken, response.refreshToken);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Login failed');
+      return rejectWithValue(error instanceof Error ? error.message : 'Login failed');
     }
   }
 );
 
 export const register = createAsyncThunk(
   'auth/register',
-  async (data: { name: string; email: string; password: string; role?: string }, { rejectWithValue }) => {
+  async (data: RegisterData, { rejectWithValue }) => {
     try {
-      console.log('[authSlice] register attempt:', data.email);
       const response = await authService.register(data);
-      console.log('[authSlice] register success:', response);
-      await storage.setItem('accessToken', response.accessToken);
-      await storage.setItem('refreshToken', response.refreshToken);
+      await storage.setAuthTokens(response.accessToken, response.refreshToken);
       return response;
     } catch (error: any) {
-      console.log('[authSlice] register error:', error.message, error.response?.data);
-      return rejectWithValue(error.message || 'Registration failed');
+      return rejectWithValue(error instanceof Error ? error.message : 'Registration failed');
     }
   }
 );
 
-export const logout = createAsyncThunk('auth/logout', async (_, { getState }) => {
-  const state = getState() as { auth: AuthState };
-  if (state.auth.refreshToken) {
-    await authService.logout(state.auth.refreshToken);
+export const logout = createAsyncThunk('auth/logout', async () => {
+  try {
+    await authService.logout();
+  } finally {
+    await storage.clearAuthTokens();
   }
-  await storage.removeItem('accessToken');
-  await storage.removeItem('refreshToken');
 });
 
 export const updateProfile = createAsyncThunk(
@@ -160,6 +156,13 @@ const authSlice = createSlice({
         state.isLoading = false;
       })
       .addCase(logout.fulfilled, (state) => {
+        state.user = null;
+        state.accessToken = null;
+        state.refreshToken = null;
+        state.isAuthenticated = false;
+        state.error = null;
+      })
+      .addCase(logout.rejected, (state) => {
         state.user = null;
         state.accessToken = null;
         state.refreshToken = null;

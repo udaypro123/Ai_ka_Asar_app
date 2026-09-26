@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { useAppSelector } from '../../src/store/hooks';
+import { DrawerLogoutButton } from '../../src/components/common/DrawerLogoutButton';
 
 function CustomDrawerContent(props: any) {
   const { user } = useAppSelector((state) => state.auth);
@@ -22,7 +23,7 @@ function CustomDrawerContent(props: any) {
       {/* Profile Header */}
       <View style={styles.profileSection}>
         <Image
-          source={require('../../assets/icon.png')}
+          source={require('../../assets/icon1.png')}
           style={styles.profileImage}
         />
 
@@ -64,6 +65,10 @@ function CustomDrawerContent(props: any) {
           onPress={() => props.navigation.navigate('profile')}
         />
       </View>
+
+      <View style={styles.logoutSection}>
+        <DrawerLogoutButton />
+      </View>
     </View>
   );
 }
@@ -100,17 +105,21 @@ function DrawerItem({
 
 export default function HRLayout() {
   const router = useRouter();
-  const { user } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, isLoading, user } = useAppSelector((state) => state.auth);
 
   const isHR = user?.roles?.includes('HR');
+  const isAdmin = user?.roles?.some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN');
 
   useEffect(() => {
-    if (!isHR) {
-      router.replace('/(tabs)');
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.replace('/(auth)/login');
+    } else if (!isHR) {
+      router.replace((isAdmin ? '/(admin)' : '/(tabs)') as any);
     }
-  }, [isHR, router]);
+  }, [isAdmin, isAuthenticated, isHR, isLoading, router]);
 
-  if (!isHR) {
+  if (isLoading || !isAuthenticated || !isHR) {
     return null;
   }
 
@@ -226,6 +235,13 @@ const styles = StyleSheet.create({
   menu: {
     paddingTop: 15,
     paddingHorizontal: 12,
+  },
+
+  logoutSection: {
+    marginTop: 'auto',
+    paddingHorizontal: 12,
+    paddingBottom: 24,
+    marginBottom: 20,
   },
 
   menuItem: {

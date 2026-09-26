@@ -42,12 +42,12 @@ export default function WelcomeScreen() {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      router.replace('(auth)');
+      router.replace('/(auth)/login');
     }
   };
 
   const handleSkip = () => {
-    router.replace('(auth)');
+    router.replace('/(auth)/login');
   };
 
   return (

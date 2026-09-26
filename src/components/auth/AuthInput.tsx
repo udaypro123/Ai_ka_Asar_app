@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../../theme';
@@ -12,6 +11,7 @@ interface AuthInputProps {
   keyboardType?: 'default' | 'email-address';
   autoCapitalize?: 'none' | 'sentences';
   error?: string;
+  onBlur?: () => void;
   onToggleSecure?: () => void;
 }
 
@@ -24,6 +24,7 @@ export function AuthInput({
   keyboardType = 'default',
   autoCapitalize = 'sentences',
   error,
+  onBlur,
   onToggleSecure,
 }: AuthInputProps) {
   const showToggle = secureTextEntry !== undefined && onToggleSecure !== undefined;
@@ -36,6 +37,7 @@ export function AuthInput({
           style={[styles.input, error && styles.inputError, showToggle && styles.inputWithToggle]}
           value={value}
           onChangeText={onChangeText}
+          onBlur={onBlur}
           placeholder={placeholder}
           placeholderTextColor={colors.textTertiary}
           secureTextEntry={secureTextEntry}

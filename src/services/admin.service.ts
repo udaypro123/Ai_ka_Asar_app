@@ -21,6 +21,11 @@ export const adminService = {
     const response = await api.get(`/admin/users/${userId}`);
     return response.data.data;
   },
+
+  setUserBlockedStatus: async (userId: string, isBlocked: boolean): Promise<Pick<User, '_id' | 'isBlocked'>> => {
+    const response = await api.put(`/admin/users/${userId}/block`, { isBlocked });
+    return response.data.data;
+  },
 };
 
 export default adminService;

@@ -1,34 +1,51 @@
 import { Drawer } from 'expo-router/drawer';
-import { Text, View, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Text, View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Href, useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '../../src/store/hooks';
-import { logout } from '../../src/store/slices/authSlice';
-import { colors, typography, spacing, borderRadius } from '../../src/theme';
+import { useAppSelector } from '../../src/store/hooks';
+import { DrawerLogoutButton } from '../../src/components/common/DrawerLogoutButton';
+import { colors, typography, spacing } from '../../src/theme';
+
+const tabRoutePaths: Record<string, Href> = {
+  community: '/(tabs)/community',
+  impact: '/(tabs)/impact',
+  career: '/(tabs)/career',
+  skills: '/(tabs)/skills',
+  profile: '/(tabs)/profile',
+};
+
+type DrawerIconName =
+  | 'grid-outline'
+  | 'people-outline'
+  | 'trending-up-outline'
+  | 'briefcase-outline'
+  | 'star-outline'
+  | 'person-outline'
+  | 'bar-chart-outline';
 
 function DrawerContent(props: any) {
   const router = useRouter();
-  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN');
   const isHR = user?.roles?.includes('HR');
 
-  const menuItems = [
-    { name: 'index', title: 'Dashboard', icon: '🏠' },
-    { name: 'community', title: 'Community', icon: '👥' },
-    { name: 'impact', title: 'Impact', icon: '📈' },
-    { name: 'career', title: 'Career', icon: '💼' },
-    { name: 'skills', title: 'Skills', icon: '⭐' },
-    { name: 'profile', title: 'Profile', icon: '👤' },
+  const menuItems: { name: string; title: string; icon: DrawerIconName }[] = [
+    { name: 'index', title: 'Dashboard', icon: 'grid-outline' },
+    { name: 'community', title: 'Community', icon: 'people-outline' },
+    { name: 'impact', title: 'Impact', icon: 'trending-up-outline' },
+    { name: 'career', title: 'Career', icon: 'briefcase-outline' },
+    { name: 'skills', title: 'Skills', icon: 'star-outline' },
+    { name: 'profile', title: 'Profile', icon: 'person-outline' },
   ];
 
   if (isAdmin || isHR) {
-    menuItems.push({ name: 'users', title: 'Manage Users', icon: '👥' });
+    menuItems.push({ name: 'users', title: 'Manage Users', icon: 'people-outline' });
 
   }
 
   if (isAdmin) {
-    menuItems.push({ name: 'admin', title: 'Admin Panel', icon: '📊' });
+    menuItems.push({ name: 'admin', title: 'Admin Panel', icon: 'bar-chart-outline' });
   }
 
   const navigate = (route: string) => {
@@ -40,22 +57,9 @@ function DrawerContent(props: any) {
     } else if (route === 'users') {
       router.navigate('/(tabs)/users');
     } else {
-      router.navigate('/(tabs)/' + route);
+      const destination = tabRoutePaths[route];
+      if (destination) router.navigate(destination);
     }
-  };
-
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: () => {
-          dispatch(logout());
-          router.replace('(auth)/login');
-        },
-      },
-    ]);
   };
 
   return (
@@ -83,23 +87,18 @@ function DrawerContent(props: any) {
               ]}
               onPress={() => navigate(item.name)}
             >
-              <View style={styles.iconContainer}>
-                <Text style={styles.icon}>{item.icon}</Text>
-              </View>
+              <Ionicons name={item.icon} size={22} color="#0047ec" />
               <Text style={styles.itemText}>{item.title}</Text>
             </Pressable>
           ))}
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Version 1.0.0</Text>
+      <View style={styles.bottomSection}>
+        <DrawerLogoutButton />
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Version 1.0.0</Text>
+        </View>
       </View>
     </ScrollView>
   );
@@ -107,13 +106,22 @@ function DrawerContent(props: any) {
 
 export default function TabsLayout() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, isLoading, user } = useAppSelector((state) => state.auth);
+  const isAdmin = user?.roles?.some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN');
+  const isHR = user?.roles?.includes('HR');
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('(auth)/login');
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.replace('/(auth)/login');
+    } else if (isAdmin) {
+      router.replace('/(admin)');
+    } else if (isHR) {
+      router.replace('/(hr)');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAdmin, isAuthenticated, isHR, isLoading, router]);
+
+  if (isLoading || !isAuthenticated || isAdmin || isHR) return null;
 
   return (
     <Drawer
@@ -157,122 +165,89 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   container: {
-    flex: 1,
-    backgroundColor: "#0854e2",
-    paddingTop: 80,
-    paddingHorizontal: spacing.lg,
+    flexGrow: 1,
+    backgroundColor: '#ffffff',
+    paddingTop: 0,
+    paddingHorizontal: 0,
   },
   header: {
+    backgroundColor: '#0047ec',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    paddingTop: 55,
+    paddingBottom: 25,
   },
   logoContainer: {
-    marginBottom: spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
+    flexDirection: 'column',
+    justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
   },
   logoCircle: {
-    width: 62,
-    height: 62,
-    borderRadius: 36,
-    backgroundColor: colors.primary,
+    width: 75,
+    height: 75,
+    borderRadius: 40,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: colors.auth.primaryLight,
-    elevation: 8,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
+    borderColor: '#ffffff',
   },
   diveder: {
     width: '100%',
-    height: 5,
-    borderRadius: 36,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'white',
-    elevation: 8,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
+    height: 1,
+    backgroundColor: '#e2e8f0',
   },
   logoText: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.white,
+    color: '#0047ec',
   },
   appName: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: 'white',
-    marginBottom: spacing.xs,
-    marginLeft: 25,
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginTop: spacing.md,
   },
   section: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
+    paddingHorizontal: 12,
   },
   card: {
-    backgroundColor: '#ffffff08',
-    borderWidth: 1,
-    borderColor: '#ffffff08',
+    backgroundColor: '#ffffff',
     overflow: 'hidden',
+    paddingTop: 15,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 15,
+    borderRadius: 10,
+    marginBottom: 5,
   },
   itemBorder: {
-    borderBottomColor: '#ffffff0c',
-    borderBottomWidth: 3,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.md,
-    backgroundColor: '#ffffff08',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-    borderWidth: 1,
-    borderColor: '#ffffff28',
-  },
-  icon: {
-    fontSize: 18,
+    borderBottomColor: '#e2e8f0',
+    borderBottomWidth: 1,
   },
   itemText: {
     flex: 1,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.medium,
-    color: 'white',
+    marginLeft: 15,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1e293b',
   },
-  logoutButton: {
-    backgroundColor: '#ef4444',
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  logoutText: {
-    color: 'white',
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
+  bottomSection: {
+    marginTop: 'auto',
+    paddingHorizontal: 12,
+    paddingBottom: spacing.md,
   },
   footer: {
-    marginTop: 'auto',
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.xs,
     alignItems: 'center',
+    marginBottom: 40,
   },
   footerText: {
     fontSize: typography.fontSize.xs,
-    color: colors.auth.textTertiary,
+    color: '#64748b',
   },
 });

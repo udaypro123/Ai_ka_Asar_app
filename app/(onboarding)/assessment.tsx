@@ -37,7 +37,7 @@ export default function AssessmentScreen() {
       toast.showToast('Please select your employment status', 'error');
       return;
     }
-      router.replace('(user)' as any);
+      router.replace('/(user)' as any);
   };
 
   return (

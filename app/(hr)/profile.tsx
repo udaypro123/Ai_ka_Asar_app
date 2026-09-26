@@ -54,9 +54,9 @@ export default function ProfileScreen() {
     setShowConfirm(true);
   };
 
-  const confirmLogout = () => {
+  const confirmLogout = async () => {
     setShowConfirm(false);
-    dispatch(logout());
+    await dispatch(logout());
     toast.showToast('Logged out successfully', 'success');
     router.replace('/(auth)/login');
   };

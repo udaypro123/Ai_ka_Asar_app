@@ -35,7 +35,7 @@ function CustomDrawerContent(props: any) {
     <View style={styles.container}>
       <View style={styles.profileSection}>
         <Image
-          source={require('../../assets/icon.png')}
+          source={require('../../assets/icon1.png')}
           style={styles.profileImage}
         />
         <Text style={styles.name}>
@@ -97,7 +97,7 @@ export default function UserLayout() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('(auth)/login');
+      router.replace('/(auth)/login');
     }
   }, [isAuthenticated, isLoading, router]);
 

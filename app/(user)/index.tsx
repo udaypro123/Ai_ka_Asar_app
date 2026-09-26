@@ -77,7 +77,6 @@ export default function UserDashboardScreen() {
       const data = await postService.getMyPosts();
       setPosts(data);
     } catch (error) {
-      console.error('Failed to load posts:', error);
     } finally {
       setLoadingPosts(false);
     }
@@ -216,7 +215,6 @@ export default function UserDashboardScreen() {
       const data = await commentService.getComments(post._id);
       setComments(data);
     } catch (error) {
-      console.error('Failed to load comments:', error);
     } finally {
       setLoadingComments(false);
     }

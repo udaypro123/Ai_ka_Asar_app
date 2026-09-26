@@ -68,25 +68,19 @@ export default function ProfileScreen() {
 
   const handleResumePick = async () => {
     try {
-      console.log('[ProfileScreen] opening document picker');
       const result = await DocumentPicker.getDocumentAsync({
         type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
       });
-      console.log('[ProfileScreen] document picker result:', JSON.stringify(result, null, 2));
       if (result.canceled) {
-        console.log('[ProfileScreen] document picker cancelled by user');
         return;
       }
       const asset = result.assets?.[0];
-      console.log('[ProfileScreen] selected asset:', asset);
       if (!asset) {
-        console.log('[ProfileScreen] no asset found');
         toast.showToast('No file selected', 'error');
         return;
       }
       setUploading(true);
       try {
-        console.log('[ProfileScreen] calling uploadResume with:', asset);
         await userService.uploadResume({
           uri: asset.uri,
           name: asset.name,
@@ -95,13 +89,11 @@ export default function ProfileScreen() {
         setResumeName(asset.name);
         toast.showToast('Resume uploaded', 'success');
       } catch (error) {
-        console.error('[ProfileScreen] upload failed:', error);
         toast.showToast('Failed to upload resume', 'error');
       } finally {
         setUploading(false);
       }
     } catch (error) {
-      console.error('[ProfileScreen] document picker error:', error);
       toast.showToast('Failed to pick document', 'error');
     }
   };
@@ -112,8 +104,8 @@ export default function ProfileScreen() {
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => {
-          dispatch(logout());
+        onPress: async () => {
+          await dispatch(logout());
           toast.showToast('Logged out successfully', 'success');
           router.replace('/(auth)/login');
         },

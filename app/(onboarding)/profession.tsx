@@ -16,7 +16,7 @@ export default function ProfessionScreen() {
       toast.showToast('Please enter your profession', 'error');
       return;
     }
-    router.replace('(onboarding)/career-profile');
+    router.replace('/(onboarding)/career-profile');
   };
 
   return (

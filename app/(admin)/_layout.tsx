@@ -1,5 +1,7 @@
 import { Drawer } from 'expo-router/drawer';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +10,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useAppSelector } from '@/hooks';
+import { DrawerLogoutButton } from '../../src/components/common/DrawerLogoutButton';
 
 function CustomDrawerContent(props: any) {
   const { user } = useAppSelector((state) => state.auth);
@@ -18,7 +21,7 @@ function CustomDrawerContent(props: any) {
       <View style={styles.profileSection}>
 
         <Image
-          source={require('../../assets/icon.png')}
+          source={require('../../assets/icon1.png')}
           style={styles.profileImage}
         />
 
@@ -51,6 +54,10 @@ function CustomDrawerContent(props: any) {
           icon="person-outline"
           onPress={() => props.navigation.navigate('profile')}
         />
+      </View>
+
+      <View style={styles.logoutSection}>
+        <DrawerLogoutButton />
       </View>
 
     </View>
@@ -88,6 +95,22 @@ function DrawerItem({
 }
 
 export default function Layout() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading, user } = useAppSelector((state) => state.auth);
+  const hasAdminAccess = Boolean(user?.roles?.some((role) => role === 'ADMIN' || role === 'SUPER_ADMIN'));
+  const hasHRAccess = Boolean(user?.roles?.includes('HR'));
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.replace('/(auth)/login');
+    } else if (!hasAdminAccess) {
+      router.replace((hasHRAccess ? '/(hr)' : '/(tabs)') as any);
+    }
+  }, [hasAdminAccess, hasHRAccess, isAuthenticated, isLoading, router]);
+
+  if (isLoading || !isAuthenticated || !hasAdminAccess) return null;
+
   return (
     <Drawer
       drawerContent={(props) => (
@@ -210,6 +233,13 @@ const styles = StyleSheet.create({
   menu: {
     paddingTop: 15,
     paddingHorizontal: 12,
+  },
+
+  logoutSection: {
+    marginTop: 'auto',
+    paddingHorizontal: 12,
+    paddingBottom: 24,
+    marginBottom: 20,
   },
 
   menuItem: {

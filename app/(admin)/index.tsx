@@ -1,12 +1,19 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
 import { useAppSelector } from '../../src/store/hooks';
 import { adminService } from '../../src/services/admin.service';
 import { AdminStats, RecentActivity } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
+import { useRouter } from 'expo-router';
+
+const fetchDashboardData = () => Promise.all([
+  adminService.getDashboardStats(),
+  adminService.getRecentActivity(),
+]);
 
 export default function AdminDashboardScreen() {
+  const router = useRouter();
   const { user } = useAppSelector((state) => state.auth);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [activity, setActivity] = useState<RecentActivity[]>([]);
@@ -15,27 +22,35 @@ export default function AdminDashboardScreen() {
 
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN') || user?.roles?.includes('HR');
 
-  useEffect(() => {
-    if (isAdmin) {
-      loadData();
-    }
-  }, [isAdmin]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const [statsData, activityData] = await Promise.all([
-        adminService.getDashboardStats(),
-        adminService.getRecentActivity(),
-      ]);
+      const [statsData, activityData] = await fetchDashboardData();
       setStats(statsData);
       setActivity(activityData);
-    } catch (error) {
-      console.error('Failed to load admin data:', error);
+    } catch {
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let isCurrent = true;
+    fetchDashboardData()
+      .then(([statsData, activityData]) => {
+        if (!isCurrent) return;
+        setStats(statsData);
+        setActivity(activityData);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (isCurrent) setLoading(false);
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [isAdmin]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -64,17 +79,22 @@ export default function AdminDashboardScreen() {
       <Text style={styles.subtitle}>Welcome back, {user?.name?.split(' ')[0] || 'Admin'}</Text>
 
       <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
+        <Pressable style={styles.statCard} onPress={() => router.push('/(admin)/users' as any)}>
           <Text style={styles.statValue}>{stats?.totalUsers || 0}</Text>
           <Text style={styles.statLabel}>Total Users</Text>
-        </View>
+        </Pressable>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>{stats?.todayUsers || 0}</Text>
-          <Text style={styles.statLabel}>Today's Users</Text>
+          <Text style={styles.statLabel}>Today&apos;s Users</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Recent Users</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Recent Users</Text>
+        <Pressable onPress={() => router.push('/(admin)/users' as any)}>
+          <Text style={styles.viewAllText}>View all</Text>
+        </Pressable>
+      </View>
       <View style={styles.card}>
         {stats?.recentUsers?.length === 0 ? (
           <Text style={styles.emptyText}>No users yet</Text>
@@ -170,6 +190,18 @@ const styles = StyleSheet.create({
     color: colors.auth.text,
     marginBottom: spacing.md,
     marginTop: spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  viewAllText: {
+    color: colors.primary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   card: {
     backgroundColor: colors.auth.cardBg,

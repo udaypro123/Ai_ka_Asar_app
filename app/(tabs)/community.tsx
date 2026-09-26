@@ -1,137 +1,96 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Modal, Alert, TextInput, Linking } from 'react-native';
-import { useEffect, useState, useMemo } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { useAppSelector } from '../../src/store/hooks';
-import { adminService, userLikeService, userCommentService } from '../../src/services/social.service';
-import { User } from '../../src/types';
+import { adminService, userLikeService } from '../../src/services/social.service';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
 import { useToast } from '../../src/components/common/Toast';
-
-interface UserWithMeta extends User {
-  likes?: string[];
-  comments?: any[];
-  likedByMe?: boolean;
-}
+import { CommunityUserModal, UserWithInteractions } from '../../src/components/common/CommunityUserModal';
 
 export default function CommunityScreen() {
   const { user } = useAppSelector((state) => state.auth);
-  const [users, setUsers] = useState<UserWithMeta[]>([]);
+  const [users, setUsers] = useState<UserWithInteractions[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<UserWithMeta | null>(null);
-  const [comments, setComments] = useState<any[]>([]);
-  const [commentText, setCommentText] = useState('');
-  const [loadingComments, setLoadingComments] = useState(false);
-  const toast = useToast();
+  const [selectedUser, setSelectedUser] = useState<UserWithInteractions | null>(null);
+  const { showToast } = useToast();
 
   const currentUserId = user?._id;
+  const targetUserIdsRef = useRef<string[]>([]);
 
-  const loadUsers = async () => {
+  const applyInteractionSummary = useCallback((summary: Awaited<ReturnType<typeof userLikeService.getInteractionSummary>>) => {
+    const summaryByUserId = new Map(summary.map((item) => [item.targetUserId, item]));
+    const applyToUser = (targetUser: UserWithInteractions): UserWithInteractions => {
+      const interaction = summaryByUserId.get(targetUser._id);
+      return {
+        ...targetUser,
+        likeCount: interaction?.likeCount ?? 0,
+        commentCount: interaction?.commentCount ?? 0,
+        likedByMe: interaction?.likedByMe ?? false,
+      };
+    };
+
+    setUsers((previousUsers) => previousUsers.map(applyToUser));
+    setSelectedUser((previousUser) => previousUser ? applyToUser(previousUser) : previousUser);
+  }, []);
+
+  const refreshInteractionSummary = useCallback(async () => {
+    const summary = await userLikeService.getInteractionSummary();
+    applyInteractionSummary(summary);
+  }, [applyInteractionSummary]);
+
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const data = await adminService.getAllUsers();
       const filtered = (data || []).filter((u) => u._id !== currentUserId && !u.roles?.includes('ADMIN') && !u.roles?.includes('SUPER_ADMIN'));
-      const usersWithMeta: UserWithMeta[] = filtered.map((u) => ({
+      const usersWithMeta: UserWithInteractions[] = filtered.map((u) => ({
         ...u,
-        likes: [],
-        comments: [],
+        likeCount: 0,
+        commentCount: 0,
         likedByMe: false,
       }));
+      targetUserIdsRef.current = usersWithMeta.map((targetUser) => targetUser._id);
       setUsers(usersWithMeta);
-    } catch (error) {
-      console.error('Failed to load users:', error);
-      toast.showToast('Failed to load users', 'error');
+      try {
+        await refreshInteractionSummary();
+      } catch {
+        showToast('Could not refresh community interactions', 'error');
+      }
+    } catch {
+      showToast('Failed to load users', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUserId, refreshInteractionSummary, showToast]);
 
-  const loadUserMeta = async (targetUserId: string) => {
-    try {
-      const [likesRes, commentsRes] = await Promise.all([
-        userLikeService.getUserLikes(targetUserId),
-        userCommentService.getUserComments(targetUserId),
-      ]);
-      setUsers((prev) =>
-        prev.map((u) =>
-          u._id === targetUserId
-            ? { ...u, likes: likesRes, likedByMe: likesRes.includes(currentUserId || '') }
-            : u
-        )
-      );
-      if (selectedUser?._id === targetUserId) {
-        setComments(commentsRes);
-      }
-    } catch (error) {
-      console.error('Failed to load user meta:', error);
-    }
-  };
+  useFocusEffect(
+    useCallback(() => {
+      void loadUsers();
+      const interval = setInterval(() => {
+        if (targetUserIdsRef.current.length > 0) {
+          void refreshInteractionSummary().catch(() => undefined);
+        }
+      }, 10000);
+      return () => clearInterval(interval);
+    }, [loadUsers, refreshInteractionSummary])
+  );
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const openUser = async (targetUser: UserWithMeta) => {
+  const openUser = (targetUser: UserWithInteractions) => {
     setSelectedUser(targetUser);
-    setLoadingComments(true);
-    setCommentText('');
-    try {
-      const [likesRes, commentsRes] = await Promise.all([
-        userLikeService.getUserLikes(targetUser._id),
-        userCommentService.getUserComments(targetUser._id),
-      ]);
-      setComments(commentsRes);
-      setUsers((prev) =>
-        prev.map((u) =>
-          u._id === targetUser._id
-            ? { ...u, likes: likesRes, likedByMe: likesRes.includes(currentUserId || '') }
-            : u
-        )
-      );
-    } catch (error) {
-      console.error('Failed to load user details:', error);
-    } finally {
-      setLoadingComments(false);
-    }
   };
 
-  const handleLike = async (targetUserId: string) => {
-    try {
-      const result = await userLikeService.toggleUserLike(currentUserId || '', targetUserId);
-      const updatedLikes = result.liked
-        ? [...(users.find((u) => u._id === targetUserId)?.likes || []), currentUserId || '']
-        : (users.find((u) => u._id === targetUserId)?.likes || []).filter((id) => id !== currentUserId);
-
-      setUsers((prev) =>
-        prev.map((u) =>
-          u._id === targetUserId
-            ? { ...u, likes: updatedLikes, likedByMe: result.liked }
-            : u
-        )
-      );
-
-      if (selectedUser?._id === targetUserId) {
-        setSelectedUser((prev) => (prev ? { ...prev, likedByMe: result.liked, likes: updatedLikes } : prev));
-      }
-    } catch (error) {
-      console.error('Like failed:', error);
-      toast.showToast('Failed to update like', 'error');
-    }
-  };
-
-  const handleAddComment = async () => {
-    if (!commentText.trim() || !selectedUser) return;
-    try {
-      const comment = await userCommentService.createUserComment({
-        targetUserId: selectedUser._id,
-        content: commentText.trim(),
-      });
-      setCommentText('');
-      setComments((prev) => [comment, ...prev]);
-      toast.showToast('Comment added', 'success');
-    } catch (error) {
-      console.error('Comment failed:', error);
-      toast.showToast('Failed to add comment', 'error');
-    }
+  const applyInteractionChange = (
+    targetUserId: string,
+    interaction: Pick<UserWithInteractions, 'likeCount' | 'commentCount' | 'likedByMe'>
+  ) => {
+    setUsers((previousUsers) => previousUsers.map((targetUser) =>
+      targetUser._id === targetUserId ? { ...targetUser, ...interaction } : targetUser
+    ));
+    setSelectedUser((previousUser) => previousUser?._id === targetUserId
+      ? { ...previousUser, ...interaction }
+      : previousUser
+    );
   };
 
   return (
@@ -183,163 +142,39 @@ export default function CommunityScreen() {
                 </View>
               )}
 
+              {u?.jobDescription && (
+                <>
+                  <Text style={styles.sectionTitleMaicard}>Job Description</Text>
+                  <Text style={styles.descriptionText}>{u?.jobDescription}</Text>
+                </>
+              )}
+
               <View style={styles.userCardFooter}>
                 <View style={styles.userDetailRow}>
                   <Text style={styles.interactionText}>
-                    ❤️ {u.likes?.length || 0} likes
+                    ❤️ {u.likeCount} likes
                   </Text>
                   <Text style={styles.interactionText}>
-                    💬 {u.comments?.length || 0} comments
+                    💬 {u.commentCount} comments
                   </Text>
                 </View>
-                {(u.jobDescription) && (
-                  <Text style={styles.jobDescriptionText} numberOfLines={2}>
-                    {u.jobDescription}
-                  </Text>
-                )}
+
+
               </View>
             </Pressable>
           ))}
         </View>
       )}
 
-      <Modal visible={!!selectedUser} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalContent}>
-            {selectedUser && (
-              <>
-                <View style={styles.modalHeader}>
-                  <View style={styles.modalAvatar}>
-                    <Text style={styles.modalAvatarText}>
-                      {selectedUser.name?.charAt(0).toUpperCase() || 'U'}
-                    </Text>
-                  </View>
-                  <Text style={styles.modalTitle}>{selectedUser.name}</Text>
-                  <Text style={styles.modalAuthor}>
-                    {selectedUser.currentRole || selectedUser.roles[0] || 'USER'}
-                    {selectedUser.company ? ` at ${selectedUser.company}` : ''}
-                  </Text>
-                </View>
-
-                <View style={styles.divider} />
-
-                <Text style={styles.sectionTitle}>Contact</Text>
-                {selectedUser.email && (
-                  <Text style={styles.detailText}>Email: {selectedUser.email}</Text>
-                )}
-                {selectedUser.mobile && (
-                  <Text style={styles.detailText}>Mobile: {selectedUser.mobile}</Text>
-                )}
-
-                <Text style={styles.sectionTitle}>Professional Details</Text>
-                {selectedUser.currentRole && (
-                  <Text style={styles.detailText}>Current Role: {selectedUser.currentRole}</Text>
-                )}
-                {selectedUser.previousRole && (
-                  <Text style={styles.detailText}>Previous Role: {selectedUser.previousRole}</Text>
-                )}
-                {selectedUser.company && (
-                  <Text style={styles.detailText}>Current Company: {selectedUser.company}</Text>
-                )}
-                {selectedUser.previousCompany && (
-                  <Text style={styles.detailText}>Previous Company: {selectedUser.previousCompany}</Text>
-                )}
-                {selectedUser.employmentStatus && (
-                  <Text style={styles.detailText}>Employment Status: {selectedUser.employmentStatus}</Text>
-                )}
-                {selectedUser.experience && (
-                  <Text style={styles.detailText}>Experience: {selectedUser.experience}</Text>
-                )}
-                {selectedUser.profession && (
-                  <Text style={styles.detailText}>Profession: {selectedUser.profession}</Text>
-                )}
-                {selectedUser.industry && (
-                  <Text style={styles.detailText}>Industry: {selectedUser.industry}</Text>
-                )}
-
-                {selectedUser.jobDescription && (
-                  <>
-                    <Text style={styles.sectionTitle}>Job Description</Text>
-                    <Text style={styles.descriptionText}>{selectedUser.jobDescription}</Text>
-                  </>
-                )}
-
-                {selectedUser.skills && selectedUser.skills.length > 0 && (
-                  <>
-                    <Text style={styles.sectionTitle}>Skills</Text>
-                    <View style={styles.skillsContainer}>
-                      {selectedUser.skills.map((skill, index) => (
-                        <View key={index} style={styles.skillBadge}>
-                          <Text style={styles.skillText}>{skill}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </>
-                )}
-
-                {(selectedUser.linkedinUrl || selectedUser.githubUrl) && (
-                  <>
-                    <Text style={styles.sectionTitle}>Profiles</Text>
-                    {selectedUser.linkedinUrl && (
-                      <Pressable style={styles.linkButton} onPress={() => Linking.openURL(selectedUser.linkedinUrl.startsWith('http') ? selectedUser.linkedinUrl : `https://${selectedUser.linkedinUrl}`)}>
-                        <Text style={styles.linkButtonText}>LinkedIn Profile</Text>
-                      </Pressable>
-                    )}
-                    {selectedUser.githubUrl && (
-                      <Pressable style={styles.linkButton} onPress={() => Linking.openURL(selectedUser.githubUrl.startsWith('http') ? selectedUser.githubUrl : `https://${selectedUser.githubUrl}`)}>
-                        <Text style={styles.linkButtonText}>GitHub Profile</Text>
-                      </Pressable>
-                    )}
-                  </>
-                )}
-
-                <View style={styles.modalPostActions}>
-                  <Pressable
-                    style={[styles.likeButton, selectedUser.likedByMe && styles.likedButton]}
-                    onPress={() => handleLike(selectedUser._id)}
-                  >
-                    <Text style={[styles.likeButtonText, selectedUser.likedByMe && styles.likedText]}>
-                      {selectedUser.likedByMe ? '❤️' : '🤍'} {selectedUser.likes?.length || 0}
-                    </Text>
-                  </Pressable>
-                </View>
-
-                <View style={styles.commentsSection}>
-                  <Text style={styles.commentsTitle}>Comments ({comments.length})</Text>
-                  {loadingComments ? (
-                    <Text style={styles.loadingText}>Loading comments...</Text>
-                  ) : (
-                    comments.map((comment) => (
-                      <View key={comment._id} style={styles.commentItem}>
-                        <Text style={styles.commentAuthor}>{comment.userName}</Text>
-                        <Text style={styles.commentContent}>{comment.content}</Text>
-                        <Text style={styles.commentDate}>
-                          {new Date(comment.createdAt).toLocaleDateString()}
-                        </Text>
-                      </View>
-                    ))
-                  )}
-                  <View style={styles.commentInputRow}>
-                    <TextInput
-                      style={styles.commentInput}
-                      placeholder="Add a comment..."
-                      value={commentText}
-                      onChangeText={setCommentText}
-                    />
-                    <Pressable style={styles.commentSend} onPress={handleAddComment}>
-                      <Text style={styles.commentSendText}>Post</Text>
-                    </Pressable>
-                  </View>
-                </View>
-
-                <Pressable style={styles.modalClose} onPress={() => setSelectedUser(null)}>
-                  <Text style={styles.modalCloseText}>Close</Text>
-                </Pressable>
-              </>
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
+      {selectedUser && (
+        <CommunityUserModal
+          key={selectedUser._id}
+          user={selectedUser}
+          currentUserId={currentUserId}
+          onClose={() => setSelectedUser(null)}
+          onInteractionChange={applyInteractionChange}
+        />
+      )}
     </GradientScrollView>
   );
 }
@@ -482,14 +317,20 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium,
   },
   jobDescriptionText: {
-    fontSize: typography.fontSize.xs,
+    fontSize: typography.fontSize.base,
     color: colors.auth.textTertiary,
     marginTop: spacing.xs,
     lineHeight: 16,
   },
+  detailsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 16,
+    padding: 5,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(50, 24, 246, 0.73)',
+    backgroundColor: 'rgba(253, 254, 255, 1)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.lg,
@@ -512,7 +353,6 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.bold,
     color: colors.auth.text,
-    marginBottom: spacing.sm,
   },
   modalAuthor: {
     fontSize: typography.fontSize.sm,
@@ -610,12 +450,14 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
   },
   modalClose: {
-    marginTop: spacing.md,
     paddingVertical: spacing.sm,
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   modalCloseText: {
-    color: colors.auth.textSecondary,
+    backgroundColor: "red",
+    padding: 8,
+    borderRadius: 8,
+    color: colors.white,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.medium,
   },
@@ -641,7 +483,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md,
   },
   modalAvatarText: {
     fontSize: 30,
@@ -657,16 +498,34 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
     color: colors.auth.textSecondary,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+    backgroundColor: colors.auth.cardBg,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    paddingVertical: 5,
+    borderRadius: borderRadius.md,
+    textAlign: 'center',
+  },
+  sectionTitleMaicard: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.white,
     marginTop: spacing.md,
     marginBottom: spacing.xs,
+    backgroundColor: "#0550d1e3",
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
+    paddingVertical: 5,
+    borderRadius: borderRadius.md,
+    textAlign: 'center',
   },
   detailText: {
     fontSize: typography.fontSize.base,
     color: colors.auth.text,
     marginBottom: spacing.xs,
     lineHeight: 22,
+    padding: 5,
   },
   descriptionText: {
     fontSize: typography.fontSize.base,
@@ -679,17 +538,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.md,
-  },
-  skillBadge: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.md,
-  },
-  skillText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.primaryDark,
   },
   linkButton: {
     backgroundColor: colors.primary,

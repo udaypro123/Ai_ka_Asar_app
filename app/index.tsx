@@ -32,17 +32,17 @@ export default function Index() {
         if (user.roles && user.roles.length > 0) {
           const role = user.roles[0];
           if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-            router.replace('(admin)');
+            router.replace('/(admin)');
           } else if (role === 'HR') {
-            router.replace('(hr)');
+            router.replace('/(hr)');
           } else {
-            router.replace('(tabs)');
+            router.replace('/(tabs)');
           }
         } else {
-          router.replace('(onboarding)');
+          router.replace('/(onboarding)/welcome');
         }
       } else {
-        router.replace('(auth)/login');
+        router.replace('/(auth)/login');
       }
     }
   }, [isLoading, isAuthenticated, user, showSplash, router]);

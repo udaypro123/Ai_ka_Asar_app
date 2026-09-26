@@ -64,6 +64,11 @@ export const adminService = {
 };
 
 export const userLikeService = {
+  getInteractionSummary: async (): Promise<UserInteractionSummary[]> => {
+    const response = await api.get('/user-likes/summary');
+    return response.data.data;
+  },
+
   toggleUserLike: async (userId: string, targetUserId: string): Promise<{ liked: boolean }> => {
     const response = await api.post(`/user-likes/${targetUserId}`);
     return response.data.data;
@@ -74,6 +79,13 @@ export const userLikeService = {
     return response.data.data;
   },
 };
+
+export interface UserInteractionSummary {
+  targetUserId: string;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
+}
 
 export const userCommentService = {
   createUserComment: async (data: { targetUserId: string; content: string }): Promise<any> => {

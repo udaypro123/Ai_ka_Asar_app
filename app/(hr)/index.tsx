@@ -30,7 +30,6 @@ export default function HRDashboardScreen() {
       setStats(statsData);
       setActivity(activityData);
     } catch (error) {
-      console.error('Failed to load HR data:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
