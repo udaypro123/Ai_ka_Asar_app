@@ -5,7 +5,7 @@ import { logout, updateProfile } from '../../src/store/slices/authSlice';
 import { useToast } from '../../src/components/common/Toast';
 import { GradientScrollView } from '@/components/common/BackgroundGradient';
 import { borderRadius, colors, spacing, typography } from '@/theme';
-import { useRouter } from 'expo-router';
+import { useAppRouter as useRouter } from '@/navigation';
 
 export default function ProfileScreen() {
   const { user } = useAppSelector((state) => state.auth);

@@ -8,13 +8,15 @@ import {
   Platform,
   Image,
 } from 'react-native';
-import { useNavigation, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { useAppRouter as useRouter } from '@/navigation';
 import { useAppDispatch, useAppSelector } from '../../src/store/hooks';
-import { register } from '../../src/store/slices/authSlice';
+import { googleLogin, register, setGoogleError } from '../../src/store/slices/authSlice';
 import { AuthContainer } from '../../src/components/auth/AuthContainer';
 import { AuthInput } from '../../src/components/auth/AuthInput';
 import { AuthButton } from '../../src/components/auth/AuthButton';
 import { AuthLink } from '../../src/components/auth/AuthLink';
+import { GoogleAuthButton } from '../../src/components/auth/GoogleAuthButton';
 import { colors, typography, spacing, borderRadius } from '../../src/theme';
 
 export default function RegisterScreen() {
@@ -24,7 +26,7 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const dispatch = useAppDispatch();
-  const { isLoading, error, isAuthenticated, user } = useAppSelector(
+  const { isLoading, error, isAuthenticated, isNewUser, user } = useAppSelector(
     (state) => state.auth
   );
 
@@ -36,7 +38,9 @@ export default function RegisterScreen() {
     if (isAuthenticated && user && !hasNavigated.current) {
       hasNavigated.current = true;
 
-      if (user.roles && user.roles.length > 0) {
+      if (isNewUser) {
+        router.replace('(onboarding)' as any);
+      } else if (user.roles && user.roles.length > 0) {
         const userRole = user.roles[0];
 
         if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
@@ -50,7 +54,7 @@ export default function RegisterScreen() {
         router.replace('(onboarding)' as any);
       }
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, isNewUser, user, router]);
 
   if (isAuthenticated && user) {
     return null;
@@ -65,9 +69,9 @@ export default function RegisterScreen() {
         style={styles.keyboard}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* AIMarg GIF */}
+        {/* AIMarg brand mark */}
         <Image
-          source={require('../../assets/aimarg.gif')}
+          source={require('../../assets/icon1.png')}
           style={styles.gif}
           resizeMode="contain"
         />
@@ -115,6 +119,15 @@ export default function RegisterScreen() {
               dispatch(register({ name, email, password }))
             }
             loading={isLoading}
+          />
+
+          <GoogleAuthButton
+            disabled={isLoading}
+            mode="signup"
+            onCredential={(idToken) => {
+              dispatch(googleLogin(idToken));
+            }}
+            onError={(message) => dispatch(setGoogleError(message))}
           />
 
           <AuthLink
@@ -231,4 +244,3 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 });
-

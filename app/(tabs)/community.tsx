@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { useCallback, useRef, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAppSelector } from '../../src/store/hooks';
 import { adminService, userLikeService } from '../../src/services/social.service';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';

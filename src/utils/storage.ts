@@ -1,34 +1,39 @@
-import * as SecureStore from 'expo-secure-store';
+import * as Keychain from 'react-native-keychain';
 
 export type AuthStorageKey = 'accessToken' | 'refreshToken' | 'rememberedEmail';
 
+const keychainOptions = {
+  accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+};
+
 export const storage = {
   async getItem(key: AuthStorageKey): Promise<string | null> {
-    return SecureStore.getItemAsync(key);
+    const credentials = await Keychain.getGenericPassword({ service: key });
+    return credentials ? credentials.password : null;
   },
 
   async setItem(key: AuthStorageKey, value: string): Promise<void> {
-    await SecureStore.setItemAsync(key, value, {
-      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    const stored = await Keychain.setGenericPassword(key, value, {
+      ...keychainOptions,
+      service: key,
     });
+    if (!stored) throw new Error(`Could not securely store ${key}`);
   },
 
   async removeItem(key: AuthStorageKey): Promise<void> {
-    await SecureStore.deleteItemAsync(key);
+    await Keychain.resetGenericPassword({ service: key });
   },
 
   async setAuthTokens(accessToken: string, refreshToken: string): Promise<void> {
     try {
-      await SecureStore.setItemAsync('accessToken', accessToken, {
-        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-      });
-      await SecureStore.setItemAsync('refreshToken', refreshToken, {
-        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-      });
+      await Promise.all([
+        storage.setItem('accessToken', accessToken),
+        storage.setItem('refreshToken', refreshToken),
+      ]);
     } catch (error) {
       await Promise.allSettled([
-        SecureStore.deleteItemAsync('accessToken'),
-        SecureStore.deleteItemAsync('refreshToken'),
+        storage.removeItem('accessToken'),
+        storage.removeItem('refreshToken'),
       ]);
       throw error;
     }
@@ -36,8 +41,8 @@ export const storage = {
 
   async clearAuthTokens(): Promise<void> {
     await Promise.all([
-      SecureStore.deleteItemAsync('accessToken'),
-      SecureStore.deleteItemAsync('refreshToken'),
+      storage.removeItem('accessToken'),
+      storage.removeItem('refreshToken'),
     ]);
   },
 };

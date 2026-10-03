@@ -60,7 +60,7 @@ apiClient.interceptors.response.use(
   },
   async (error: AxiosResponse | any) => {
     const originalRequest = error.config as RetriableRequest | undefined;
-    const isAuthRequest = /\/auth\/(login|register|refresh|logout|forgot-password|reset-password|verify-email)/.test(
+    const isAuthRequest = /\/auth\/(login|register|google|refresh|logout|forgot-password|reset-password|verify-email)/.test(
       originalRequest?.url ?? ''
     );
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthRequest) {

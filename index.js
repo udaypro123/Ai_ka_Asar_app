@@ -1,5 +1,5 @@
 import { AppRegistry } from 'react-native';
 import { name as appName } from './app.json';
-import RootLayout from './app/_layout';
+import App from './App';
 
-AppRegistry.registerComponent(appName, () => RootLayout);
+AppRegistry.registerComponent(appName, () => App);

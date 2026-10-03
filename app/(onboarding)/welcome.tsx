@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useAppRouter as useRouter } from '@/navigation';
 import { colors, typography, spacing, borderRadius } from '@/theme';
 
 const { width } = Dimensions.get('window');

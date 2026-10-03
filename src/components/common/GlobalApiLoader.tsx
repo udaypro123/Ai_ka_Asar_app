@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { apiLoading } from '../../utils/apiLoading';
+import { colors } from '../../theme';
 
 export function GlobalApiLoader() {
   const [isLoading, setIsLoading] = useState(false);
@@ -12,7 +12,7 @@ export function GlobalApiLoader() {
 
   return (
     <View style={styles.overlay} accessibilityRole="progressbar" accessibilityLabel="Loading">
-      <Image source={require('../../../assets/aimarg.gif')} style={styles.image} contentFit="contain" />
+      <ActivityIndicator size="large" color={colors.primary} />
     </View>
   );
 }
@@ -25,9 +25,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.82)',
-  },
-  image: {
-    width: 156,
-    height: 156,
   },
 });

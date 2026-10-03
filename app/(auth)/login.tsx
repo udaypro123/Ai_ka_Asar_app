@@ -9,13 +9,15 @@ import {
   Platform,
   Image,
 } from 'react-native';
-import { useNavigation, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import { useAppRouter as useRouter } from '@/navigation';
 import { useAppDispatch, useAppSelector } from '../../src/store/hooks';
-import { login } from '../../src/store/slices/authSlice';
+import { googleLogin, login, setGoogleError } from '../../src/store/slices/authSlice';
 import { AuthContainer } from '../../src/components/auth/AuthContainer';
 import { AuthInput } from '../../src/components/auth/AuthInput';
 import { AuthButton } from '../../src/components/auth/AuthButton';
 import { AuthLink } from '../../src/components/auth/AuthLink';
+import { GoogleAuthButton } from '../../src/components/auth/GoogleAuthButton';
 import { typography, spacing } from '../../src/theme';
 import { storage } from '../../src/utils/storage';
 
@@ -27,7 +29,7 @@ export default function LoginScreen() {
 
   const dispatch = useAppDispatch();
 
-  const { isLoading, error, isAuthenticated, user } = useAppSelector(
+  const { isLoading, error, isAuthenticated, isNewUser, user } = useAppSelector(
     (state) => state.auth
   );
 
@@ -74,7 +76,9 @@ export default function LoginScreen() {
     if (isAuthenticated && user && !hasNavigated.current) {
       hasNavigated.current = true;
 
-      if (user.roles && user.roles.length > 0) {
+      if (isNewUser) {
+        router.replace('(onboarding)' as any);
+      } else if (user.roles && user.roles.length > 0) {
         const role = user.roles[0];
 
         if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
@@ -88,7 +92,7 @@ export default function LoginScreen() {
         router.replace('(onboarding)' as any);
       }
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, isNewUser, user, router]);
 
   if (isAuthenticated && user) {
     return null;
@@ -105,9 +109,9 @@ export default function LoginScreen() {
       >
         <View style={styles.loginWrapper}>
 
-          {/* GIF - CARD KE PEECHE */}
+          {/* Brand mark above the login card. */}
           <Image
-            source={require('../../assets/aimarg.gif')}
+            source={require('../../assets/icon1.png')}
             style={styles.gif}
             resizeMode="contain"
           />
@@ -182,6 +186,15 @@ export default function LoginScreen() {
                 dispatch(login({ email, password }))
               }
               loading={isLoading}
+            />
+
+            <GoogleAuthButton
+              disabled={isLoading}
+              mode="signin"
+              onCredential={(idToken) => {
+                dispatch(googleLogin(idToken));
+              }}
+              onError={(message) => dispatch(setGoogleError(message))}
             />
 
             <AuthLink
@@ -317,4 +330,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

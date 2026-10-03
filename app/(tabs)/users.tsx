@@ -5,7 +5,7 @@ import { adminService } from '../../src/services/admin.service';
 import { AdminStats, User } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
-import { useRouter } from 'expo-router';
+import { useAppRouter as useRouter } from '@/navigation';
 
 export default function UsersListScreen() {
   const { user } = useAppSelector((state) => state.auth);

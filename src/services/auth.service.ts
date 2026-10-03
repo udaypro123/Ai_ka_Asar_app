@@ -30,6 +30,11 @@ const authService = {
     return response.data.data;
   },
 
+  googleLogin: async (idToken: string): Promise<AuthResponse & { isNewUser: boolean }> => {
+    const response = await api.post('/auth/google', { idToken });
+    return response.data.data;
+  },
+
   logout: async (): Promise<void> => {
     const refreshToken = await storage.getItem('refreshToken');
     if (refreshToken) await api.post('/auth/logout', { refreshToken });

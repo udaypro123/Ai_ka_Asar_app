@@ -1,13 +1,13 @@
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
-import * as DocumentPicker from 'expo-document-picker';
+import * as DocumentPicker from '../../src/utils/documentPicker';
 import { useAppDispatch, useAppSelector } from '../../src/store/hooks';
 import { logout, updateProfile } from '../../src/store/slices/authSlice';
 import { userService } from '../../src/services/user.service';
 import { useToast } from '../../src/components/common/Toast';
 import { GradientScrollView } from '@/components/common/BackgroundGradient';
 import { borderRadius, colors, spacing, typography } from '@/theme';
-import { useRouter } from 'expo-router';
+import { useAppRouter as useRouter } from '@/navigation';
 
 export default function ProfileScreen() {
   const { user } = useAppSelector((state) => state.auth);

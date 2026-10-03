@@ -8,8 +8,8 @@ import { Post, Comment } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '@/theme';
 import { GradientScrollView } from '@/components/common/BackgroundGradient';
 import { useToast } from '@/components/common/Toast';
-import { useRouter } from 'expo-router';
-import * as DocumentPicker from 'expo-document-picker';
+import { useAppRouter as useRouter } from '@/navigation';
+import * as DocumentPicker from '../../src/utils/documentPicker';
 import { openExternalUrl } from '../../src/utils/externalLinks';
 
 export default function HomeScreen() {

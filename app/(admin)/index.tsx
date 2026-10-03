@@ -5,7 +5,7 @@ import { adminService } from '../../src/services/admin.service';
 import { AdminStats, RecentActivity } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
-import { useRouter } from 'expo-router';
+import { useAppRouter as useRouter } from '@/navigation';
 
 const fetchDashboardData = () => Promise.all([
   adminService.getDashboardStats(),

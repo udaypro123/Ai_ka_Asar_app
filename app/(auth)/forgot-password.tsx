@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Alert } from 'react-native';
-import { useNavigation } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';

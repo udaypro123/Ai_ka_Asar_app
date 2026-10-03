@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 import { colors, typography, spacing } from '../../theme';
 
 interface AuthContainerProps {

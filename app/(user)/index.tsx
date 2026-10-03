@@ -8,8 +8,8 @@ import { Post, Comment } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
 import { useToast } from '../../src/components/common/Toast';
-import { useRouter } from 'expo-router';
-import * as DocumentPicker from 'expo-document-picker';
+import { useAppRouter as useRouter } from '@/navigation';
+import * as DocumentPicker from '../../src/utils/documentPicker';
 
 export default function UserDashboardScreen() {
   const { user } = useAppSelector((state) => state.auth);

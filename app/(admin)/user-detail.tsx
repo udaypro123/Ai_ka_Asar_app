@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from '@/navigation';
 import { useAppSelector } from '../../src/store/hooks';
 import { adminService } from '../../src/services/admin.service';
 import { User } from '../../src/types';

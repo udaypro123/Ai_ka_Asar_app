@@ -1,8 +1,8 @@
 import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useAppRouter as useRouter } from '@/navigation';
 import { useToast } from '../../src/components/common/Toast';
-import { LinearGradient } from 'expo-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 import { colors, typography, spacing, borderRadius } from '@/theme';
 
 export default function ProfessionScreen() {
