@@ -10,6 +10,7 @@ import { ToastOnlyNotice } from '../../src/components/common/ToastOnlyNotice';
 import { useToast } from '../../src/components/common/Toast';
 import { getApiErrorMessage } from '../../src/utils/apiError';
 import { MyPostActivity } from '../../src/components/common/MyPostActivity';
+import { ProfileInteractions } from '../../src/components/common/ProfileInteractions';
 
 export default function HRDashboardScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -77,6 +78,7 @@ export default function HRDashboardScreen() {
       </View>
 
       <MyPostActivity refreshKey={activityRefreshKey} />
+      <ProfileInteractions refreshKey={activityRefreshKey} />
 
       <Text style={styles.sectionTitle}>Recent Activity</Text>
       <View style={styles.card}>

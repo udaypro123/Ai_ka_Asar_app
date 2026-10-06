@@ -184,6 +184,17 @@ export interface Comment {
   updatedAt: string;
 }
 
+export interface UserComment {
+  _id: string;
+  targetUserId: string;
+  userId: string;
+  parentCommentId?: string | null;
+  userName: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LikeResponse {
   liked: boolean;
   likesCount: number;

@@ -1,5 +1,5 @@
 import api from '../config/api';
-import { Post, Comment, LikeResponse, User } from '../types';
+import { Post, Comment, LikeResponse, User, UserComment } from '../types';
 
 export const postService = {
   createPost: async (data: { title: string; content: string; category?: string }): Promise<Post> => {
@@ -88,12 +88,16 @@ export interface UserInteractionSummary {
 }
 
 export const userCommentService = {
-  createUserComment: async (data: { targetUserId: string; content: string }): Promise<any> => {
+  createUserComment: async (data: {
+    targetUserId: string;
+    content: string;
+    parentCommentId?: string;
+  }): Promise<UserComment> => {
     const response = await api.post('/user-comments', data, { skipGlobalLoader: true });
     return response.data.data;
   },
 
-  getUserComments: async (targetUserId: string): Promise<any[]> => {
+  getUserComments: async (targetUserId: string): Promise<UserComment[]> => {
     const response = await api.get(`/user-comments/${targetUserId}`, { skipGlobalLoader: true });
     return response.data.data;
   },

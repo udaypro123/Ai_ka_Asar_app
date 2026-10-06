@@ -12,9 +12,12 @@ import {
 import { borderRadius, colors, spacing, typography } from '../../theme';
 import { userCommentService, userLikeService } from '../../services/social.service';
 import { User } from '../../types';
+import type { UserComment } from '../../types';
 import { openExternalUrl } from '../../utils/externalLinks';
 import { AimargLoader } from './AimargLoader';
 import { ResumeDownloadButton } from './ResumeDownloadButton';
+import { getApiErrorMessage } from '../../utils/apiError';
+import { ThreadedComments } from './ThreadedComments';
 
 export interface UserWithInteractions extends User {
   likeCount: number;
@@ -45,8 +48,9 @@ function ProfileDetail({ label, value }: ProfileDetailProps) {
 }
 
 export function CommunityUserModal({ user, currentUserId, onClose, onInteractionChange }: CommunityUserModalProps) {
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<UserComment[]>([]);
   const [commentText, setCommentText] = useState('');
+  const [replyTarget, setReplyTarget] = useState<UserComment | null>(null);
   const [loadingComments, setLoadingComments] = useState(true);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [updatingLike, setUpdatingLike] = useState(false);
@@ -56,13 +60,23 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
 
   useEffect(() => {
     let isCurrentSelection = true;
+    setLoadingComments(true);
+    setComments([]);
+    setReplyTarget(null);
+    setLikeCount(user.likeCount);
+    setCommentCount(user.commentCount);
+    setLikedByMe(user.likedByMe);
     userCommentService.getUserComments(user._id)
       .then((latestComments) => {
         if (isCurrentSelection) {
           setComments(latestComments);
         }
       })
-      .catch(() => undefined)
+      .catch((error: unknown) => {
+        if (isCurrentSelection) {
+          Alert.alert('Comments unavailable', getApiErrorMessage(error, 'Could not load comments.'));
+        }
+      })
       .finally(() => {
         if (isCurrentSelection) setLoadingComments(false);
       });
@@ -70,7 +84,7 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
     return () => {
       isCurrentSelection = false;
     };
-  }, [user._id]);
+  }, [user._id, user.commentCount, user.likeCount, user.likedByMe]);
 
   const handleLike = async () => {
     if (updatingLike) return;
@@ -93,14 +107,19 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
     if (!content || submittingComment) return;
     setSubmittingComment(true);
     try {
-      const comment = await userCommentService.createUserComment({ targetUserId: user._id, content });
+      const comment = await userCommentService.createUserComment({
+        targetUserId: user._id,
+        content,
+        ...(replyTarget ? { parentCommentId: replyTarget._id } : {}),
+      });
       const nextCommentCount = commentCount + 1;
       setComments((previousComments) => [comment, ...previousComments]);
       setCommentText('');
+      setReplyTarget(null);
       setCommentCount(nextCommentCount);
       onInteractionChange(user._id, { likeCount, commentCount: nextCommentCount, likedByMe });
-    } catch {
-      Alert.alert('Comment failed', 'Could not add your comment. Please try again.');
+    } catch (error: unknown) {
+      Alert.alert('Comment failed', getApiErrorMessage(error, 'Could not add your comment. Please try again.'));
     } finally {
       setSubmittingComment(false);
     }
@@ -205,27 +224,26 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
               {loadingComments ? (
                 <AimargLoader compact message="Loading comments" />
               ) : comments.length > 0 ? (
-                comments.map((comment) => (
-                <View key={comment._id} style={styles.commentItem}>
-                  <View style={styles.commentMetaRow}>
-                    <Text style={styles.commentAuthor} numberOfLines={1}>{comment.userName}</Text>
-                    <Text style={styles.commentDate}>
-                      {new Date(comment.createdAt).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <Text style={styles.commentContent}>{comment.content}</Text>
-                </View>
-                ))
+                <ThreadedComments comments={comments} onReply={setReplyTarget} />
               ) : (
                 <Text style={styles.noComments}>No comments yet. Be the first to comment.</Text>
               )}
             </ScrollView>
+            {replyTarget && (
+              <View style={styles.replyingRow}>
+                <Text style={styles.replyingText}>Replying to {replyTarget.userName}</Text>
+                <Pressable onPress={() => setReplyTarget(null)}>
+                  <Text style={styles.cancelReply}>Cancel</Text>
+                </Pressable>
+              </View>
+            )}
             <View style={styles.commentInputRow}>
               <TextInput
                 style={styles.commentInput}
-                placeholder="Add a comment..."
+                placeholder={replyTarget ? 'Write a reply...' : 'Add a comment...'}
                 value={commentText}
                 onChangeText={setCommentText}
+                maxLength={500}
               />
               <Pressable
                 disabled={submittingComment || !commentText.trim()}
@@ -452,6 +470,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.md,
+  },
+  replyingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  replyingText: {
+    color: colors.auth.textSecondary,
+    fontSize: typography.fontSize.xs,
+  },
+  cancelReply: {
+    color: colors.error,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
   },
   commentInput: {
     flex: 1,

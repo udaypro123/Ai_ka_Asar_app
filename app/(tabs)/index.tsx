@@ -14,6 +14,7 @@ import { openExternalUrl } from '../../src/utils/externalLinks';
 import { usePageRefresh } from '../../src/components/common/PageRefresh';
 import { getApiErrorMessage } from '../../src/utils/apiError';
 import { MyPostActivity } from '../../src/components/common/MyPostActivity';
+import { ProfileInteractions } from '../../src/components/common/ProfileInteractions';
 
 export default function HomeScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -400,6 +401,7 @@ export default function HomeScreen() {
       </Pressable>
 
       <MyPostActivity />
+      <ProfileInteractions />
 
       {/* <Text style={styles.sectionTitle}>My AI Impact Thought</Text>
       {posts.length === 0 ? (

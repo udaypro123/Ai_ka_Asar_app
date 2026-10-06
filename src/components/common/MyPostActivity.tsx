@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -17,6 +17,7 @@ import { commentService, postService } from '../../services/social.service';
 import type { Comment, Post } from '../../types';
 import { borderRadius, colors, spacing, typography } from '../../theme';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { ThreadedComments } from './ThreadedComments';
 
 interface MyPostActivityProps {
   refreshKey?: number;
@@ -94,24 +95,6 @@ export function MyPostActivity({ refreshKey = 0 }: MyPostActivityProps) {
     }
   };
 
-  const commentThreads = useMemo(() => {
-    const commentIds = new Set(comments.map((comment) => comment._id));
-    const roots = comments.filter(
-      (comment) => !comment.parentCommentId || !commentIds.has(comment.parentCommentId)
-    );
-    const repliesByParent = new Map<string, Comment[]>();
-    comments.forEach((comment) => {
-      if (!comment.parentCommentId || !commentIds.has(comment.parentCommentId)) return;
-      const replies = repliesByParent.get(comment.parentCommentId) || [];
-      replies.push(comment);
-      repliesByParent.set(comment.parentCommentId, replies);
-    });
-    return roots.map((comment) => ({
-      comment,
-      replies: repliesByParent.get(comment._id) || [],
-    }));
-  }, [comments]);
-
   return (
     <View>
       <Text style={styles.sectionTitle}>Your Post Activity</Text>
@@ -168,34 +151,10 @@ export function MyPostActivity({ refreshKey = 0 }: MyPostActivityProps) {
               >
                 {loadingComments ? (
                   <Text style={styles.emptyText}>Loading comments...</Text>
-                ) : commentThreads.length === 0 ? (
+                ) : comments.length === 0 ? (
                   <Text style={styles.emptyText}>No comments yet.</Text>
                 ) : (
-                  commentThreads.map(({ comment, replies }) => (
-                    <View key={comment._id}>
-                      <View style={styles.commentCard}>
-                        <Text style={styles.commentAuthor}>{comment.userName}</Text>
-                        <Text style={styles.commentContent}>{comment.content}</Text>
-                        <View style={styles.commentFooter}>
-                          <Text style={styles.commentDate}>
-                            {new Date(comment.createdAt).toLocaleDateString()}
-                          </Text>
-                          <Pressable onPress={() => setReplyTarget(comment)}>
-                            <Text style={styles.replyAction}>Reply</Text>
-                          </Pressable>
-                        </View>
-                      </View>
-                      {replies.map((reply) => (
-                        <View key={reply._id} style={styles.replyCard}>
-                          <Text style={styles.commentAuthor}>{reply.userName}</Text>
-                          <Text style={styles.commentContent}>{reply.content}</Text>
-                          <Text style={styles.commentDate}>
-                            {new Date(reply.createdAt).toLocaleDateString()}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  ))
+                  <ThreadedComments comments={comments} onReply={setReplyTarget} />
                 )}
               </ScrollView>
 
