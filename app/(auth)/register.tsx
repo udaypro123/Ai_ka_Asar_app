@@ -3,32 +3,40 @@ import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
+  Pressable,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   Image,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAppRouter as useRouter } from '@/navigation';
 import { useAppDispatch, useAppSelector } from '../../src/store/hooks';
-import { googleLogin, register, setGoogleError } from '../../src/store/slices/authSlice';
+import { googleLogin, register } from '../../src/store/slices/authSlice';
 import { AuthContainer } from '../../src/components/auth/AuthContainer';
 import { AuthInput } from '../../src/components/auth/AuthInput';
 import { AuthButton } from '../../src/components/auth/AuthButton';
 import { AuthLink } from '../../src/components/auth/AuthLink';
 import { GoogleAuthButton } from '../../src/components/auth/GoogleAuthButton';
+import { AuthDivider } from '../../src/components/auth/AuthDivider';
+import { useToast } from '../../src/components/common/Toast';
 import { colors, typography, spacing, borderRadius } from '../../src/theme';
+import type { AccountRole } from '../../src/services/auth.service';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [role, setRole] = useState<AccountRole>('USER');
 
   const dispatch = useAppDispatch();
-  const { isLoading, error, isAuthenticated, isNewUser, user } = useAppSelector(
+  const { isLoading, isAuthenticated, isNewUser, user } = useAppSelector(
     (state) => state.auth
   );
+  const toast = useToast();
 
   const navigation = useNavigation<any>();
   const router = useRouter();
@@ -38,7 +46,9 @@ export default function RegisterScreen() {
     if (isAuthenticated && user && !hasNavigated.current) {
       hasNavigated.current = true;
 
-      if (isNewUser) {
+      if (user.roles?.includes('HR')) {
+        router.replace('(hr)' as any);
+      } else if (isNewUser) {
         router.replace('(onboarding)' as any);
       } else if (user.roles && user.roles.length > 0) {
         const userRole = user.roles[0];
@@ -60,6 +70,20 @@ export default function RegisterScreen() {
     return null;
   }
 
+  const handleRegister = async () => {
+    try {
+      await dispatch(register({ name, email, password, role })).unwrap();
+      toast.showToast('Account created successfully', 'success');
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Sign up failed. Please try again.');
+      if (/already\s+(registered|exists)|email.*in use/i.test(message)) {
+        toast.showToast('User already exists. Please log in.', 'error');
+        return;
+      }
+      toast.showToast(message, 'error');
+    }
+  };
+
   return (
     <AuthContainer
       title="Create Account"
@@ -69,73 +93,95 @@ export default function RegisterScreen() {
         style={styles.keyboard}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* AIMarg brand mark */}
-        <Image
-          source={require('../../assets/icon1.png')}
-          style={styles.gif}
-          resizeMode="contain"
-        />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Image
+            source={require('../../assets/icon3.png')}
+            style={styles.brandMark}
+            resizeMode="contain"
+          />
 
-        {/* Login/Register Card */}
-        <View style={styles.card}>
-          <View style={styles.header}>
-             <Text style={styles.title}>Welcome Back</Text>
-            
-            <Text style={styles.subtitle}>
-              Create your account to get started
-            </Text>
+          <View style={styles.card}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Create Account</Text>
+              <Text style={styles.subtitle}>
+                Create your account to get started
+              </Text>
+            </View>
+
+            <Text style={styles.roleLabel}>Select Role</Text>
+            <View style={styles.roleContainer}>
+              {(['USER', 'HR'] as const).map((option) => {
+                const selected = role === option;
+                return (
+                  <Pressable
+                    key={option}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    onPress={() => setRole(option)}
+                    style={[styles.roleButton, selected && styles.roleButtonActive]}
+                  >
+                    <Text style={[styles.roleButtonText, selected && styles.roleButtonTextActive]}>
+                      {option === 'USER' ? 'User' : 'HR'}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <AuthInput
+              label="Full Name"
+              value={name}
+              onChangeText={setName}
+              placeholder="Enter your full name"
+            />
+
+            <AuthInput
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <AuthInput
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Create a password"
+              secureTextEntry={!showPassword}
+              onToggleSecure={() => setShowPassword((prev) => !prev)}
+            />
+
+            <AuthButton
+              title="Sign Up"
+              onPress={handleRegister}
+              loading={isLoading}
+            />
+
+            <AuthDivider />
+
+            <GoogleAuthButton
+              disabled={isLoading}
+              mode="signup"
+              onCredential={async (credential) => {
+                await dispatch(googleLogin({ ...credential, role })).unwrap();
+                toast.showToast('Google sign up successful', 'success');
+              }}
+              onError={(message) => toast.showToast(message, 'error')}
+            />
+
+            <AuthLink
+              text="Already have an Account?"
+              linkText="Log in"
+              onPress={() => navigation.navigate('login')}
+            />
           </View>
-
-          {error && <Text style={styles.error}>{error}</Text>}
-
-          <AuthInput
-            label="Full Name"
-            value={name}
-            onChangeText={setName}
-            placeholder="Enter your full name"
-          />
-
-          <AuthInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Enter your email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <AuthInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Create a password"
-            secureTextEntry={!showPassword}
-            onToggleSecure={() => setShowPassword((prev) => !prev)}
-          />
-
-          <AuthButton
-            title="Sign Up"
-            onPress={() =>
-              dispatch(register({ name, email, password }))
-            }
-            loading={isLoading}
-          />
-
-          <GoogleAuthButton
-            disabled={isLoading}
-            mode="signup"
-            onCredential={(idToken) => {
-              dispatch(googleLogin(idToken));
-            }}
-            onError={(message) => dispatch(setGoogleError(message))}
-          />
-
-          <AuthLink
-            text="Already have an Account?"
-            linkText="Log in"
-            onPress={() => navigation.navigate('login')}
-          />
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </AuthContainer>
   );
@@ -144,26 +190,22 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   keyboard: {
     flex: 1,
+  },
+
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
   },
 
-  /*
-   * GIF is above the card.
-   * Negative margin makes the card overlap
-   * the bottom portion of the GIF.
-   */
-  gif: {
-    width: 250,
-    height: 250,
-    margin:"auto",
-    marginBottom: -70,
-    marginTop: -80,
-    zIndex: 1,
+  brandMark: {
+    width: 140,
+    height: 140,
+    alignSelf: 'center',
+    marginBottom: spacing.sm,
   },
 
-  /*
-   * Card comes over the GIF.
-   */
   card: {
     width: '100%',
     borderRadius: 10,
@@ -178,7 +220,6 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
 
     // elevation: 12,
-    zIndex: 2,
   },
 
   header: {
@@ -196,13 +237,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: typography.fontSize.base,
     color: '#000101',
-    textAlign: 'center',
-  },
-
-  error: {
-    color: '#ef4444',
-    marginBottom: spacing.md,
-    fontSize: typography.fontSize.sm,
     textAlign: 'center',
   },
 

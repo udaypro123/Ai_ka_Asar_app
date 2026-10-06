@@ -1,12 +1,17 @@
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
-import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
 import { useAppSelector } from '../../src/store/hooks';
+import { AimargLoader } from '../../src/components/common/AimargLoader';
 import { adminService } from '../../src/services/admin.service';
 import { userLikeService } from '../../src/services/social.service';
 import { AdminStats, User } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
 import { CommunityUserModal, UserWithInteractions } from '../../src/components/common/CommunityUserModal';
+import { usePageRefresh } from '../../src/components/common/PageRefresh';
+import { ToastOnlyNotice } from '../../src/components/common/ToastOnlyNotice';
+import { useToast } from '../../src/components/common/Toast';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 export default function AdminUsersScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -16,16 +21,12 @@ export default function AdminUsersScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN');
 
-  useEffect(() => {
-    if (isAdmin) {
-      loadData();
-    }
-  }, [isAdmin]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
       setLoadError(false);
       const [statsData, usersData] = await Promise.all([
@@ -51,12 +52,19 @@ export default function AdminUsersScreen() {
             likedByMe: interaction?.likedByMe ?? false,
           };
         }));
-    } catch {
+    } catch (error: unknown) {
       setLoadError(true);
+      showToast(getApiErrorMessage(error, 'Failed to refresh the account list.'), 'error');
     } finally {
       setLoading(false);
     }
-  }
+  }, [showToast]);
+
+  useEffect(() => {
+    if (isAdmin) void loadData().catch(() => undefined);
+  }, [isAdmin, loadData]);
+
+  usePageRefresh(loadData);
 
   const updateBlockedStatus = async (targetUser: User) => {
     const isBlocked = !targetUser.isBlocked;
@@ -66,8 +74,8 @@ export default function AdminUsersScreen() {
       setUsers((previousUsers) => previousUsers.map((item) =>
         item._id === targetUser._id ? { ...item, isBlocked: result.isBlocked } : item
       ));
-    } catch {
-      Alert.alert('Update failed', 'Could not update this account. Please try again.');
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, 'Could not update this account. Please try again.'), 'error');
     } finally {
       setUpdatingUserId(null);
     }
@@ -103,17 +111,13 @@ export default function AdminUsersScreen() {
   };
 
   if (!isAdmin) {
-    return (
-      <GradientScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.errorText}>You do not have permission to view this page.</Text>
-      </GradientScrollView>
-    );
+    return <ToastOnlyNotice message="You do not have permission to view this page." />;
   }
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <AimargLoader />
       </View>
     );
   }
@@ -125,7 +129,6 @@ export default function AdminUsersScreen() {
 
       {loadError ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Could not load users.</Text>
           <Pressable style={styles.retryButton} onPress={() => void loadData()}>
             <Text style={styles.retryButtonText}>Try again</Text>
           </Pressable>
@@ -411,12 +414,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-  },
-  errorText: {
-    fontSize: typography.fontSize.base,
-    color: colors.error,
-    textAlign: 'center',
-    marginTop: spacing.xl,
   },
   loadingContainer: {
     flex: 1,

@@ -11,6 +11,7 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
+  role: AccountRole;
 }
 
 export interface AuthResponse {
@@ -18,6 +19,12 @@ export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
 }
+
+export type AccountRole = 'USER' | 'HR';
+export type GoogleCredential = (
+  | { idToken: string; accessToken?: never }
+  | { accessToken: string; idToken?: never }
+) & { role?: AccountRole };
 
 const authService = {
   login: async (data: LoginData): Promise<AuthResponse> => {
@@ -30,8 +37,8 @@ const authService = {
     return response.data.data;
   },
 
-  googleLogin: async (idToken: string): Promise<AuthResponse & { isNewUser: boolean }> => {
-    const response = await api.post('/auth/google', { idToken });
+  googleLogin: async (credential: GoogleCredential): Promise<AuthResponse & { isNewUser: boolean }> => {
+    const response = await api.post('/auth/google', credential);
     return response.data.data;
   },
 

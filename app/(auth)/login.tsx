@@ -12,14 +12,17 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useAppRouter as useRouter } from '@/navigation';
 import { useAppDispatch, useAppSelector } from '../../src/store/hooks';
-import { googleLogin, login, setGoogleError } from '../../src/store/slices/authSlice';
+import { googleLogin, login } from '../../src/store/slices/authSlice';
 import { AuthContainer } from '../../src/components/auth/AuthContainer';
 import { AuthInput } from '../../src/components/auth/AuthInput';
 import { AuthButton } from '../../src/components/auth/AuthButton';
 import { AuthLink } from '../../src/components/auth/AuthLink';
 import { GoogleAuthButton } from '../../src/components/auth/GoogleAuthButton';
+import { AuthDivider } from '../../src/components/auth/AuthDivider';
 import { typography, spacing } from '../../src/theme';
 import { storage } from '../../src/utils/storage';
+import { useToast } from '../../src/components/common/Toast';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -29,9 +32,10 @@ export default function LoginScreen() {
 
   const dispatch = useAppDispatch();
 
-  const { isLoading, error, isAuthenticated, isNewUser, user } = useAppSelector(
+  const { isLoading, isAuthenticated, isNewUser, user } = useAppSelector(
     (state) => state.auth
   );
+  const toast = useToast();
 
   const navigation = useNavigation<any>();
   const router = useRouter();
@@ -72,6 +76,14 @@ export default function LoginScreen() {
     }
   };
 
+  const handleLogin = async () => {
+    try {
+      await dispatch(login({ email, password })).unwrap();
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Login failed. Please try again.'), 'error');
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated && user && !hasNavigated.current) {
       hasNavigated.current = true;
@@ -109,14 +121,12 @@ export default function LoginScreen() {
       >
         <View style={styles.loginWrapper}>
 
-          {/* Brand mark above the login card. */}
           <Image
-            source={require('../../assets/icon1.png')}
-            style={styles.gif}
+            source={require('../../assets/icon3.png')}
+            style={styles.brandMark}
             resizeMode="contain"
           />
 
-          {/* CARD - GIF KE UPAR OVERLAP */}
           <View style={styles.card}>
             <View style={styles.header}>
               <Text style={styles.title}>Welcome Back</Text>
@@ -125,8 +135,6 @@ export default function LoginScreen() {
                 Sign in to continue
               </Text>
             </View>
-
-            {error && <Text style={styles.error}>{error}</Text>}
 
             <AuthInput
               label="Email"
@@ -182,19 +190,19 @@ export default function LoginScreen() {
 
             <AuthButton
               title="Sign In"
-              onPress={() =>
-                dispatch(login({ email, password }))
-              }
+              onPress={handleLogin}
               loading={isLoading}
             />
+
+            <AuthDivider />
 
             <GoogleAuthButton
               disabled={isLoading}
               mode="signin"
-              onCredential={(idToken) => {
-                dispatch(googleLogin(idToken));
+              onCredential={async (credential) => {
+                await dispatch(googleLogin(credential)).unwrap();
               }}
-              onError={(message) => dispatch(setGoogleError(message))}
+              onError={(message) => toast.showToast(message, 'error')}
             />
 
             <AuthLink
@@ -219,21 +227,13 @@ const styles = StyleSheet.create({
   loginWrapper: {
     width: '100%',
     alignItems: 'center',
-    position: 'relative',
   },
 
-  gif: {
-    width: 250,
-    height: 250,
-
-    /*
-     * GIF upar rahega
-     * Card ke peeche jayega
-     */
-    marginBottom: -70,
-    marginTop: -120,
-
-    zIndex: 1,
+  brandMark: {
+    width: 160,
+    height: 160,
+    alignSelf: 'center',
+    marginBottom: spacing.sm,
   },
 
   card: {
@@ -243,11 +243,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
 
     padding: spacing.md,
-
-    /*
-     * GIF ke upar card
-     */
-    zIndex: 2,
 
     shadowOffset: {
       width: 0,
@@ -275,13 +270,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: typography.fontSize.base,
     color: '#000103',
-    textAlign: 'center',
-  },
-
-  error: {
-    color: '#ef4444',
-    marginBottom: spacing.md,
-    fontSize: typography.fontSize.sm,
     textAlign: 'center',
   },
 

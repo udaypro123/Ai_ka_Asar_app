@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert, Modal } from 'react-native';
 import { useState, useEffect, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../../src/store/hooks';
-import { updateProfile } from '../../src/store/slices/authSlice';
+import { setUserProfile, updateProfile } from '../../src/store/slices/authSlice';
 import { postService, commentService, likeService } from '../../src/services/social.service';
 import { userService } from '../../src/services/user.service';
 import { Post, Comment } from '../../src/types';
@@ -10,6 +10,8 @@ import { GradientScrollView } from '../../src/components/common/BackgroundGradie
 import { useToast } from '../../src/components/common/Toast';
 import { useAppRouter as useRouter } from '@/navigation';
 import * as DocumentPicker from '../../src/utils/documentPicker';
+import { usePageRefresh } from '../../src/components/common/PageRefresh';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 export default function UserDashboardScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -76,7 +78,8 @@ export default function UserDashboardScreen() {
     try {
       const data = await postService.getMyPosts();
       setPosts(data);
-    } catch (error) {
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Could not load your posts.'), 'error');
     } finally {
       setLoadingPosts(false);
     }
@@ -85,6 +88,29 @@ export default function UserDashboardScreen() {
   useEffect(() => {
     loadMyPosts();
   }, []);
+
+  usePageRefresh(async () => {
+    const [latestProfile, latestPosts] = await Promise.all([
+      userService.getProfile(),
+      postService.getMyPosts(),
+    ]);
+    setProfile({
+      name: latestProfile.name || '',
+      email: latestProfile.email || '',
+      mobile: latestProfile.mobile || '',
+      currentRole: latestProfile.currentRole || '',
+      previousRole: latestProfile.previousRole || '',
+      previousCompany: latestProfile.previousCompany || '',
+      company: latestProfile.company || '',
+      jobDescription: latestProfile.jobDescription || '',
+      skills: latestProfile.skills?.join(', ') || '',
+      linkedinUrl: latestProfile.linkedinUrl || '',
+      githubUrl: latestProfile.githubUrl || '',
+    });
+    setResumeName(latestProfile.resume?.split('/').pop() || null);
+    setPosts(latestPosts);
+    dispatch(setUserProfile(latestProfile));
+  });
 
   const handleSaveProfile = async () => {
     setSavingProfile(true);
@@ -109,8 +135,8 @@ export default function UserDashboardScreen() {
         } as any)
       ).unwrap();
       toast.showToast('Profile updated', 'success');
-    } catch (error) {
-      toast.showToast('Failed to update profile', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to update profile'), 'error');
     } finally {
       setSavingProfile(false);
     }
@@ -119,26 +145,33 @@ export default function UserDashboardScreen() {
   const handleResumePick = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
       });
       if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        if (!/\.(pdf|docx)$/i.test(asset.name)) {
+          toast.showToast('Choose a PDF or DOCX file', 'error');
+          return;
+        }
         setUploading(true);
         try {
           await userService.uploadResume({
-            uri: result.assets[0].uri,
-            name: result.assets[0].name,
-            type: result.assets[0].mimeType || 'application/pdf',
-          } as any);
-          setResumeName(result.assets[0].name);
+            uri: asset.uri,
+            name: asset.name,
+            type: asset.name.toLowerCase().endsWith('.pdf')
+              ? 'application/pdf'
+              : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          });
+          setResumeName(asset.name);
           toast.showToast('Resume uploaded', 'success');
-        } catch {
-          toast.showToast('Failed to upload resume', 'error');
+        } catch (error: unknown) {
+          toast.showToast(getApiErrorMessage(error, 'Failed to upload resume'), 'error');
         } finally {
           setUploading(false);
         }
       }
-    } catch {
-      toast.showToast('Failed to pick document', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to pick document'), 'error');
     }
   };
 
@@ -201,8 +234,8 @@ export default function UserDashboardScreen() {
       }
       setShowPostModal(false);
       loadMyPosts();
-    } catch (error) {
-      toast.showToast('Failed to save thought', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to save thought'), 'error');
     } finally {
       setSavingPost(false);
     }
@@ -214,7 +247,8 @@ export default function UserDashboardScreen() {
     try {
       const data = await commentService.getComments(post._id);
       setComments(data);
-    } catch (error) {
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Could not load comments.'), 'error');
     } finally {
       setLoadingComments(false);
     }
@@ -228,8 +262,8 @@ export default function UserDashboardScreen() {
         setSelectedPost(updated);
       }
       loadMyPosts();
-    } catch (error) {
-      toast.showToast('Failed to update like', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to update like'), 'error');
     }
   };
 
@@ -246,8 +280,8 @@ export default function UserDashboardScreen() {
       const updated = await postService.getPostById(selectedPost._id);
       setSelectedPost(updated);
       loadMyPosts();
-    } catch (error) {
-      toast.showToast('Failed to add comment', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to add comment'), 'error');
     }
   };
 

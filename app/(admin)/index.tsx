@@ -1,11 +1,15 @@
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { useAppSelector } from '../../src/store/hooks';
+import { AimargLoader } from '../../src/components/common/AimargLoader';
 import { adminService } from '../../src/services/admin.service';
 import { AdminStats, RecentActivity } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
 import { useAppRouter as useRouter } from '@/navigation';
+import { ToastOnlyNotice } from '../../src/components/common/ToastOnlyNotice';
+import { useToast } from '../../src/components/common/Toast';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 const fetchDashboardData = () => Promise.all([
   adminService.getDashboardStats(),
@@ -19,6 +23,7 @@ export default function AdminDashboardScreen() {
   const [activity, setActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { showToast } = useToast();
 
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN') || user?.roles?.includes('HR');
 
@@ -27,12 +32,13 @@ export default function AdminDashboardScreen() {
       const [statsData, activityData] = await fetchDashboardData();
       setStats(statsData);
       setActivity(activityData);
-    } catch {
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, 'Could not load the admin dashboard.'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -43,14 +49,18 @@ export default function AdminDashboardScreen() {
         setStats(statsData);
         setActivity(activityData);
       })
-      .catch(() => undefined)
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          showToast(getApiErrorMessage(error, 'Could not load the admin dashboard.'), 'error');
+        }
+      })
       .finally(() => {
         if (isCurrent) setLoading(false);
       });
     return () => {
       isCurrent = false;
     };
-  }, [isAdmin]);
+  }, [isAdmin, showToast]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -58,17 +68,13 @@ export default function AdminDashboardScreen() {
   };
 
   if (!isAdmin) {
-    return (
-      <GradientScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.errorText}>You do not have permission to view this page.</Text>
-      </GradientScrollView>
-    );
+    return <ToastOnlyNotice message="You do not have permission to view this page." />;
   }
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <AimargLoader />
       </View>
     );
   }
@@ -261,12 +267,6 @@ const styles = StyleSheet.create({
     color: colors.auth.textSecondary,
     textAlign: 'center',
     paddingVertical: spacing.md,
-  },
-  errorText: {
-    fontSize: typography.fontSize.base,
-    color: colors.error,
-    textAlign: 'center',
-    marginTop: spacing.xl,
   },
   loadingContainer: {
     flex: 1,

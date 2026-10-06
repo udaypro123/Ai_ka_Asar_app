@@ -6,6 +6,7 @@ import { StatusBar, StyleSheet } from 'react-native';
 import AppNavigation from './src/navigation/AppNavigation';
 import { GlobalApiLoader } from './src/components/common/GlobalApiLoader';
 import { ToastProvider } from './src/components/common/Toast';
+import { PageRefreshProvider } from './src/components/common/PageRefresh';
 import { store } from './src/store/store';
 
 export default function App() {
@@ -14,9 +15,11 @@ export default function App() {
       <SafeAreaProvider>
         <GestureHandlerRootView style={styles.root}>
           <ToastProvider>
-            <StatusBar barStyle="dark-content" />
-            <AppNavigation />
-            <GlobalApiLoader />
+            <PageRefreshProvider>
+              <StatusBar barStyle="dark-content" />
+              <AppNavigation />
+              <GlobalApiLoader />
+            </PageRefreshProvider>
           </ToastProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>

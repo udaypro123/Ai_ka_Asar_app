@@ -1,63 +1,69 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams } from '@/navigation';
+import { AimargLoader } from '../../src/components/common/AimargLoader';
 import { useAppSelector } from '../../src/store/hooks';
 import { adminService } from '../../src/services/admin.service';
 import { User } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
 import { openExternalUrl } from '../../src/utils/externalLinks';
+import { ResumeDownloadButton } from '../../src/components/common/ResumeDownloadButton';
+import { usePageRefresh } from '../../src/components/common/PageRefresh';
+import { ToastOnlyNotice } from '../../src/components/common/ToastOnlyNotice';
+import { useToast } from '../../src/components/common/Toast';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 export default function UserDetailScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const { user } = useAppSelector((state) => state.auth);
   const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const { showToast } = useToast();
 
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN') || user?.roles?.includes('HR');
 
-  useEffect(() => {
-    if (isAdmin && userId) {
-      loadUser();
-    }
-  }, [isAdmin, userId]);
-
-  const loadUser = async () => {
+  const loadUser = useCallback(async () => {
     try {
       const data = await adminService.getUserById(userId as string);
       setProfile(data as User);
-    } catch (error) {
+    } catch (error: unknown) {
+      setLoadError(true);
+      showToast(getApiErrorMessage(error, 'Could not load this user.'), 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast, userId]);
+
+  useEffect(() => {
+    if (isAdmin && userId) void loadUser().catch(() => undefined);
+  }, [isAdmin, loadUser, userId]);
+
+  usePageRefresh(loadUser);
 
   const openLink = (url?: string) => {
     void openExternalUrl(url);
   };
 
   if (!isAdmin) {
-    return (
-      <GradientScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.errorText}>You do not have permission to view this page.</Text>
-      </GradientScrollView>
-    );
+    return <ToastOnlyNotice message="You do not have permission to view this page." />;
   }
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <AimargLoader />
       </View>
     );
   }
 
+  if (!profile && loadError) {
+    return <View style={styles.loadingContainer} />;
+  }
+
   if (!profile) {
-    return (
-      <GradientScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.errorText}>User not found</Text>
-      </GradientScrollView>
-    );
+    return <ToastOnlyNotice message="User not found" />;
   }
 
   const InfoRow = ({ label, value, link }: { label: string; value?: string; link?: boolean }) => {
@@ -136,7 +142,7 @@ export default function UserDetailScreen() {
         {profile.resume && (
           <>
             <Text style={styles.sectionTitle}>Resume</Text>
-            <Text style={styles.infoValue}>Resume is stored privately and is not available through a public link.</Text>
+            <ResumeDownloadButton userId={profile._id} />
           </>
         )}
       </View>
@@ -153,12 +159,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  errorText: {
-    fontSize: typography.fontSize.base,
-    color: colors.error,
-    textAlign: 'center',
-    marginTop: spacing.xl,
   },
   card: {
     backgroundColor: colors.auth.cardBg,

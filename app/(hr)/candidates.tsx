@@ -1,12 +1,18 @@
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
 import { useAppSelector } from '../../src/store/hooks';
+import { AimargLoader } from '../../src/components/common/AimargLoader';
 import { adminService } from '../../src/services/admin.service';
 import { userLikeService } from '../../src/services/social.service';
 import { AdminStats } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
 import { CommunityUserModal, UserWithInteractions } from '../../src/components/common/CommunityUserModal';
+import { ResumeDownloadButton } from '../../src/components/common/ResumeDownloadButton';
+import { usePageRefresh } from '../../src/components/common/PageRefresh';
+import { ToastOnlyNotice } from '../../src/components/common/ToastOnlyNotice';
+import { useToast } from '../../src/components/common/Toast';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 const fetchCandidates = async (currentUserId?: string) => {
   const [statsData, usersData] = await Promise.all([
@@ -47,35 +53,32 @@ export default function HRCandidatesScreen() {
   const [selectedUser, setSelectedUser] = useState<UserWithInteractions | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
+  const { showToast } = useToast();
 
   const isHR = user?.roles?.includes('HR');
 
-  useEffect(() => {
-    if (!isHR) return;
-    let isCurrent = true;
-    fetchCandidates(user?._id)
-      .then((result) => {
-        if (!isCurrent) return;
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const result = await fetchCandidates(user?._id);
         setStats(result.stats);
         setUsers(result.users);
-      })
-      .catch(() => {
-        if (isCurrent) setLoadError(true);
-      })
-      .finally(() => {
-        if (isCurrent) setLoading(false);
-      });
-    return () => {
-      isCurrent = false;
-    };
-  }, [isHR, reloadKey, user?._id]);
+    } catch (error: unknown) {
+      setLoadError(true);
+      showToast(getApiErrorMessage(error, 'Could not load candidates.'), 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast, user?._id]);
 
-  const retryLoading = () => {
-    setLoadError(false);
-    setLoading(true);
-    setReloadKey((currentKey) => currentKey + 1);
-  };
+  useEffect(() => {
+    if (isHR) void loadData().catch(() => undefined);
+  }, [isHR, loadData]);
+
+  usePageRefresh(loadData);
+
+  const retryLoading = () => void loadData().catch(() => undefined);
 
   const applyInteractionChange = (
     targetUserId: string,
@@ -91,17 +94,13 @@ export default function HRCandidatesScreen() {
   };
 
   if (!isHR) {
-    return (
-      <GradientScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.errorText}>You do not have permission to view this page.</Text>
-      </GradientScrollView>
-    );
+    return <ToastOnlyNotice message="You do not have permission to view this page." />;
   }
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <AimargLoader />
       </View>
     );
   }
@@ -113,7 +112,6 @@ export default function HRCandidatesScreen() {
 
       {loadError ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Could not load candidates.</Text>
           <Pressable style={styles.retryButton} onPress={retryLoading}>
             <Text style={styles.retryButtonText}>Try again</Text>
           </Pressable>
@@ -166,6 +164,7 @@ export default function HRCandidatesScreen() {
                   <Text style={styles.interactionText}>💬 {targetUser.commentCount} comments</Text>
                 </View>
               </Pressable>
+              {targetUser.resume && <ResumeDownloadButton userId={targetUser._id} compact />}
             </View>
           ))}
         </View>
@@ -333,12 +332,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
-  },
-  errorText: {
-    fontSize: typography.fontSize.base,
-    color: colors.error,
-    textAlign: 'center',
-    marginTop: spacing.xl,
   },
   loadingContainer: {
     flex: 1,

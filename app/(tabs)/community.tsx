@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppSelector } from '../../src/store/hooks';
@@ -7,11 +7,17 @@ import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
 import { useToast } from '../../src/components/common/Toast';
 import { CommunityUserModal, UserWithInteractions } from '../../src/components/common/CommunityUserModal';
+import { AimargLoader } from '../../src/components/common/AimargLoader';
+import { ResumeDownloadButton } from '../../src/components/common/ResumeDownloadButton';
+import { usePageRefresh } from '../../src/components/common/PageRefresh';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 export default function CommunityScreen() {
   const { user } = useAppSelector((state) => state.auth);
   const [users, setUsers] = useState<UserWithInteractions[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRole, setSelectedRole] = useState<'USER' | 'HR'>('USER');
+  const [visibleCount, setVisibleCount] = useState(5);
   const [selectedUser, setSelectedUser] = useState<UserWithInteractions | null>(null);
   const { showToast } = useToast();
 
@@ -54,22 +60,24 @@ export default function CommunityScreen() {
       setUsers(usersWithMeta);
       try {
         await refreshInteractionSummary();
-      } catch {
-        showToast('Could not refresh community interactions', 'error');
+      } catch (error: unknown) {
+        showToast(getApiErrorMessage(error, 'Could not refresh community interactions'), 'error');
       }
-    } catch {
-      showToast('Failed to load users', 'error');
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, 'Failed to load users'), 'error');
     } finally {
       setLoading(false);
     }
   }, [currentUserId, refreshInteractionSummary, showToast]);
 
+  usePageRefresh(loadUsers);
+
   useFocusEffect(
     useCallback(() => {
-      void loadUsers();
+      loadUsers();
       const interval = setInterval(() => {
         if (targetUserIdsRef.current.length > 0) {
-          void refreshInteractionSummary().catch(() => undefined);
+          refreshInteractionSummary().catch(() => undefined);
         }
       }, 10000);
       return () => clearInterval(interval);
@@ -93,76 +101,113 @@ export default function CommunityScreen() {
     );
   };
 
+  const filteredUsers = users.filter((communityUser) =>
+    communityUser.roles?.includes(selectedRole)
+  );
+  const visibleUsers = filteredUsers.slice(0, visibleCount);
+
   return (
     <GradientScrollView contentContainerStyle={styles.content}>
       <Text style={styles.title}>Community</Text>
       <Text style={styles.subtitle}>Connect with professionals and share AI impact insights</Text>
 
+      <View style={styles.roleTabs}>
+        {(['USER', 'HR'] as const).map((role) => {
+          const selected = selectedRole === role;
+          return (
+            <Pressable
+              key={role}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              onPress={() => {
+                setSelectedRole(role);
+                setVisibleCount(5);
+              }}
+              style={[styles.roleTab, selected && styles.roleTabSelected]}
+            >
+              <Text style={[styles.roleTabText, selected && styles.roleTabTextSelected]}>
+                {role === 'USER' ? 'User' : 'HR'}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <AimargLoader />
         </View>
-      ) : users.length === 0 ? (
+      ) : filteredUsers.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>No users yet</Text>
+          <Text style={styles.emptyText}>No {selectedRole === 'HR' ? 'HR' : 'users'} found</Text>
         </View>
       ) : (
         <View style={styles.usersList}>
-          {users.map((u) => (
-            <Pressable key={u._id} style={styles.userCard} onPress={() => openUser(u)}>
-              <View style={styles.userCardHeader}>
-                <View style={styles.userAvatar}>
-                  <Text style={styles.userAvatarText}>
-                    {u.name?.charAt(0).toUpperCase() || 'U'}
-                  </Text>
-                </View>
-                <View style={styles.userCardInfo}>
-                  <Text style={styles.userName}>{u.name}</Text>
-                  <Text style={styles.userRole}>
-                    {u.currentRole || u.roles[0] || 'USER'}
-                    {u.company ? ` at ${u.company}` : ''}
-                  </Text>
-                  {u.mobile && <Text style={styles.userMobile}>{u.mobile}</Text>}
-                </View>
-                <View style={styles.arrowContainer}>
-                  <Text style={styles.arrow}>›</Text>
-                </View>
-              </View>
-
-              {(u.skills && u.skills.length > 0) && (
-                <View style={styles.userSkillsRow}>
-                  {u.skills.slice(0, 4).map((skill, index) => (
-                    <View key={index} style={styles.skillBadge}>
-                      <Text style={styles.skillText}>{skill}</Text>
-                    </View>
-                  ))}
-                  {u.skills.length > 4 && (
-                    <Text style={styles.moreSkills}>+{u.skills.length - 4}</Text>
-                  )}
-                </View>
-              )}
-
-              {u?.jobDescription && (
-                <>
-                  <Text style={styles.sectionTitleMaicard}>Job Description</Text>
-                  <Text style={styles.descriptionText}>{u?.jobDescription}</Text>
-                </>
-              )}
-
-              <View style={styles.userCardFooter}>
-                <View style={styles.userDetailRow}>
-                  <Text style={styles.interactionText}>
-                    ❤️ {u.likeCount} likes
-                  </Text>
-                  <Text style={styles.interactionText}>
-                    💬 {u.commentCount} comments
-                  </Text>
+          {visibleUsers.map((u) => (
+            <View key={u._id} style={styles.userCard}>
+              <Pressable onPress={() => openUser(u)}>
+                <View style={styles.userCardHeader}>
+                  <View style={styles.userAvatar}>
+                    <Text style={styles.userAvatarText}>
+                      {u.name?.charAt(0).toUpperCase() || 'U'}
+                    </Text>
+                  </View>
+                  <View style={styles.userCardInfo}>
+                    <Text style={styles.userName}>{u.name}</Text>
+                    <Text style={styles.userRole}>
+                      {u.currentRole || u.roles[0] || 'USER'}
+                      {u.company ? ` at ${u.company}` : ''}
+                    </Text>
+                    {u.mobile && <Text style={styles.userMobile}>{u.mobile}</Text>}
+                  </View>
+                  <View style={styles.arrowContainer}>
+                    <Text style={styles.arrow}>›</Text>
+                  </View>
                 </View>
 
+                {(u.skills && u.skills.length > 0) && (
+                  <View style={styles.userSkillsRow}>
+                    {u.skills.slice(0, 4).map((skill, index) => (
+                      <View key={index} style={styles.skillBadge}>
+                        <Text style={styles.skillText}>{skill}</Text>
+                      </View>
+                    ))}
+                    {u.skills.length > 4 && (
+                      <Text style={styles.moreSkills}>+{u.skills.length - 4}</Text>
+                    )}
+                  </View>
+                )}
 
-              </View>
-            </Pressable>
+                {u?.jobDescription && (
+                  <>
+                    <Text style={styles.sectionTitleMaicard}>Job Description</Text>
+                    <Text style={styles.descriptionText}>{u?.jobDescription}</Text>
+                  </>
+                )}
+
+                <View style={styles.userCardFooter}>
+                  <View style={styles.userDetailRow}>
+                    <Text style={styles.interactionText}>
+                      ❤️ {u.likeCount} likes
+                    </Text>
+                    <Text style={styles.interactionText}>
+                      💬 {u.commentCount} comments
+                    </Text>
+                  </View>
+                </View>
+              </Pressable>
+              {(u.hasResume || u.resume) && <ResumeDownloadButton userId={u._id} compact />}
+            </View>
           ))}
+          {visibleCount < filteredUsers.length && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setVisibleCount((count) => count + 5)}
+              style={styles.loadMoreButton}
+            >
+              <Text style={styles.loadMoreText}>Load more</Text>
+            </Pressable>
+          )}
         </View>
       )}
 
@@ -195,11 +240,38 @@ const styles = StyleSheet.create({
     color: colors.auth.textSecondary,
     marginBottom: spacing.lg,
   },
+  roleTabs: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  roleTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm + 2,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.auth.cardBorder,
+    backgroundColor: colors.auth.cardBg,
+  },
+  roleTabSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  roleTabText: {
+    color: colors.auth.textSecondary,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  roleTabTextSelected: {
+    color: colors.white,
+  },
   loadingContainer: {
     flex: 1,
+    minHeight: 360,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.lg,
   },
   emptyCard: {
     backgroundColor: colors.auth.cardBg,
@@ -217,6 +289,21 @@ const styles = StyleSheet.create({
   },
   usersList: {
     gap: spacing.md,
+  },
+  loadMoreButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.auth.cardBg,
+  },
+  loadMoreText: {
+    color: colors.primary,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
   },
   userCard: {
     backgroundColor: colors.auth.cardBg,

@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import authService from '../../src/services/auth.service';
 import { useToast } from '../../src/components/common/Toast';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, 'Reset token is required'),
@@ -21,7 +22,6 @@ export default function ResetPasswordScreen() {
   const {
     control,
     handleSubmit,
-    formState: { errors },
   } = useForm<ResetPasswordData>({
     resolver: zodResolver(resetPasswordSchema),
   });
@@ -33,7 +33,7 @@ export default function ResetPasswordScreen() {
       setSuccess(true);
       toast.showToast('Password reset successfully', 'success');
     } catch (error: any) {
-      toast.showToast(error.message || 'Failed to reset password', 'error');
+      toast.showToast(getApiErrorMessage(error, 'Failed to reset password'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -72,8 +72,6 @@ export default function ResetPasswordScreen() {
             />
           )}
         />
-        {errors.token && <Text style={styles.error}>{errors.token.message}</Text>}
-
         <Controller
           control={control}
           name="password"
@@ -88,9 +86,14 @@ export default function ResetPasswordScreen() {
             />
           )}
         />
-        {errors.password && <Text style={styles.error}>{errors.password.message}</Text>}
-
-        <Pressable style={styles.button} onPress={handleSubmit(onSubmit)} disabled={isLoading}>
+        <Pressable
+          style={styles.button}
+          onPress={handleSubmit(onSubmit, (validationErrors) => {
+            const firstError = Object.values(validationErrors).find((item) => item?.message)?.message;
+            if (firstError) toast.showToast(firstError, 'error');
+          })}
+          disabled={isLoading}
+        >
           <Text style={styles.buttonText}>{isLoading ? 'Resetting...' : 'Reset Password'}</Text>
         </Pressable>
       </View>
@@ -118,11 +121,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     marginBottom: 32,
-  },
-  error: {
-    color: '#EF4444',
-    marginBottom: 16,
-    fontSize: 14,
   },
   input: {
     borderWidth: 1,

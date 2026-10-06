@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   Pressable,
@@ -14,6 +13,8 @@ import { borderRadius, colors, spacing, typography } from '../../theme';
 import { userCommentService, userLikeService } from '../../services/social.service';
 import { User } from '../../types';
 import { openExternalUrl } from '../../utils/externalLinks';
+import { AimargLoader } from './AimargLoader';
+import { ResumeDownloadButton } from './ResumeDownloadButton';
 
 export interface UserWithInteractions extends User {
   likeCount: number;
@@ -137,6 +138,13 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
           <ProfileDetail label="Profession" value={user.profession} />
           <ProfileDetail label="Industry" value={user.industry} />
 
+          {(user.hasResume || user.resume) && (
+            <>
+              <Text style={styles.sectionTitle}>Resume</Text>
+              <ResumeDownloadButton userId={user._id} />
+            </>
+          )}
+
           {user.jobDescription && (
             <>
               <Text style={styles.sectionTitle}>Job Description</Text>
@@ -161,12 +169,12 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
             <>
               <Text style={styles.sectionTitle}>Profiles</Text>
               {user.linkedinUrl && (
-                <Pressable style={styles.linkButton} onPress={() => void openExternalUrl(user.linkedinUrl)}>
+                <Pressable style={styles.linkButton} onPress={() => openExternalUrl(user.linkedinUrl)}>
                   <Text style={styles.linkButtonText}>LinkedIn Profile</Text>
                 </Pressable>
               )}
               {user.githubUrl && (
-                <Pressable style={styles.linkButton} onPress={() => void openExternalUrl(user.githubUrl)}>
+                <Pressable style={styles.linkButton} onPress={() => openExternalUrl(user.githubUrl)}>
                   <Text style={styles.linkButtonText}>GitHub Profile</Text>
                 </Pressable>
               )}
@@ -177,7 +185,7 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
             <Pressable
               disabled={updatingLike}
               style={[styles.likeButton, likedByMe && styles.likedButton]}
-              onPress={() => void handleLike()}
+              onPress={handleLike}
             >
               <Text style={[styles.likeButtonText, likedByMe && styles.likedText]}>
                 {likedByMe ? '❤️' : '🤍'} {likeCount}
@@ -187,17 +195,31 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
 
           <View style={styles.commentsSection}>
             <Text style={styles.commentsTitle}>Comments ({commentCount})</Text>
-            {loadingComments ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              comments.map((comment) => (
+            <ScrollView
+              style={styles.commentsList}
+              contentContainerStyle={styles.commentsListContent}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+            >
+              {loadingComments ? (
+                <AimargLoader compact message="Loading comments" />
+              ) : comments.length > 0 ? (
+                comments.map((comment) => (
                 <View key={comment._id} style={styles.commentItem}>
-                  <Text style={styles.commentAuthor}>{comment.userName}</Text>
+                  <View style={styles.commentMetaRow}>
+                    <Text style={styles.commentAuthor} numberOfLines={1}>{comment.userName}</Text>
+                    <Text style={styles.commentDate}>
+                      {new Date(comment.createdAt).toLocaleDateString()}
+                    </Text>
+                  </View>
                   <Text style={styles.commentContent}>{comment.content}</Text>
-                  <Text style={styles.commentDate}>{new Date(comment.createdAt).toLocaleDateString()}</Text>
                 </View>
-              ))
-            )}
+                ))
+              ) : (
+                <Text style={styles.noComments}>No comments yet. Be the first to comment.</Text>
+              )}
+            </ScrollView>
             <View style={styles.commentInputRow}>
               <TextInput
                 style={styles.commentInput}
@@ -208,7 +230,7 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
               <Pressable
                 disabled={submittingComment || !commentText.trim()}
                 style={[styles.commentSend, (submittingComment || !commentText.trim()) && styles.commentSendDisabled]}
-                onPress={() => void handleAddComment()}
+                onPress={handleAddComment}
               >
                 <Text style={styles.commentSendText}>{submittingComment ? 'Posting...' : 'Post'}</Text>
               </Pressable>
@@ -381,6 +403,20 @@ const styles = StyleSheet.create({
     color: colors.auth.text,
     marginBottom: spacing.md,
   },
+  commentsList: {
+    height: 280,
+    flexGrow: 0,
+  },
+  commentsListContent: {
+    paddingBottom: spacing.xs,
+    flexGrow: 1,
+  },
+  noComments: {
+    color: colors.auth.textSecondary,
+    fontSize: typography.fontSize.sm,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+  },
   commentItem: {
     backgroundColor: colors.auth.cardBg,
     borderRadius: borderRadius.md,
@@ -389,11 +425,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.auth.cardBorder,
   },
+  commentMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
   commentAuthor: {
+    flex: 1,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
     color: colors.auth.text,
-    marginBottom: spacing.xs,
   },
   commentContent: {
     fontSize: typography.fontSize.sm,
@@ -401,6 +444,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   commentDate: {
+    flexShrink: 0,
     fontSize: typography.fontSize.xs,
     color: colors.auth.textTertiary,
   },

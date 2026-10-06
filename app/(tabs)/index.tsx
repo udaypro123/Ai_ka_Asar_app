@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, Alert } from 'react-native';
 import { useState, useEffect, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../../src/store/hooks';
-import { updateProfile } from '../../src/store/slices/authSlice';
+import { setUserProfile, updateProfile } from '../../src/store/slices/authSlice';
 import { postService, commentService, likeService } from '../../src/services/social.service';
 import { userService } from '../../src/services/user.service';
 import { Post, Comment } from '../../src/types';
@@ -11,6 +11,9 @@ import { useToast } from '@/components/common/Toast';
 import { useAppRouter as useRouter } from '@/navigation';
 import * as DocumentPicker from '../../src/utils/documentPicker';
 import { openExternalUrl } from '../../src/utils/externalLinks';
+import { usePageRefresh } from '../../src/components/common/PageRefresh';
+import { getApiErrorMessage } from '../../src/utils/apiError';
+import { MyPostActivity } from '../../src/components/common/MyPostActivity';
 
 export default function HomeScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -84,7 +87,8 @@ export default function HomeScreen() {
       if (data.resume) {
         setResumeName(data.resume.split('/').pop() || 'Resume uploaded');
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Could not load your profile.'), 'error');
     } finally {
       setLoadingProfile(false);
     }
@@ -108,7 +112,8 @@ export default function HomeScreen() {
     try {
       const data = await postService.getMyPosts();
       setPosts(data);
-    } catch (error) {
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Could not load your posts.'), 'error');
     } finally {
       setLoadingPosts(false);
     }
@@ -117,6 +122,29 @@ export default function HomeScreen() {
   useEffect(() => {
     loadMyPosts();
   }, []);
+
+  usePageRefresh(async () => {
+    const [latestProfile, latestPosts] = await Promise.all([
+      userService.getProfile(),
+      postService.getMyPosts(),
+    ]);
+    setProfile({
+      name: latestProfile.name || '',
+      email: latestProfile.email || '',
+      mobile: latestProfile.mobile || '',
+      currentRole: latestProfile.currentRole || '',
+      previousRole: latestProfile.previousRole || '',
+      previousCompany: latestProfile.previousCompany || '',
+      company: latestProfile.company || '',
+      jobDescription: latestProfile.jobDescription || '',
+      skills: latestProfile.skills?.join(', ') || '',
+      linkedinUrl: latestProfile.linkedinUrl || '',
+      githubUrl: latestProfile.githubUrl || '',
+    });
+    setResumeName(latestProfile.resume?.split('/').pop() || null);
+    setPosts(latestPosts);
+    dispatch(setUserProfile(latestProfile));
+  });
 
   const handleSaveProfile = async () => {
     setSavingProfile(true);
@@ -142,8 +170,8 @@ export default function HomeScreen() {
       ).unwrap();
       toast.showToast('Profile updated', 'success');
       fetchProfile();
-    } catch (error) {
-      toast.showToast('Failed to update profile', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to update profile'), 'error');
     } finally {
       setSavingProfile(false);
     }
@@ -152,26 +180,33 @@ export default function HomeScreen() {
   const handleResumePick = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
       });
       if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        if (!/\.(pdf|docx)$/i.test(asset.name)) {
+          toast.showToast('Choose a PDF or DOCX file', 'error');
+          return;
+        }
         setUploading(true);
         try {
           await userService.uploadResume({
-            uri: result.assets[0].uri,
-            name: result.assets[0].name,
-            type: result.assets[0].mimeType || 'application/pdf',
-          } as any);
-          setResumeName(result.assets[0].name);
+            uri: asset.uri,
+            name: asset.name,
+            type: asset.name.toLowerCase().endsWith('.pdf')
+              ? 'application/pdf'
+              : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          });
+          setResumeName(asset.name);
           toast.showToast('Resume uploaded', 'success');
-        } catch {
-          toast.showToast('Failed to upload resume', 'error');
+        } catch (error: unknown) {
+          toast.showToast(getApiErrorMessage(error, 'Failed to upload resume'), 'error');
         } finally {
           setUploading(false);
         }
       }
-    } catch {
-      toast.showToast('Failed to pick document', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to pick document'), 'error');
     }
   };
 
@@ -224,8 +259,8 @@ export default function HomeScreen() {
       }
       setShowPostModal(false);
       loadMyPosts();
-    } catch (error) {
-      toast.showToast('Failed to save thought', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to save thought'), 'error');
     } finally {
       setSavingPost(false);
     }
@@ -237,7 +272,8 @@ export default function HomeScreen() {
     try {
       const data = await commentService.getComments(post._id);
       setComments(data);
-    } catch (error) {
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Could not load comments.'), 'error');
     } finally {
       setLoadingComments(false);
     }
@@ -251,8 +287,8 @@ export default function HomeScreen() {
         setSelectedPost(updated);
       }
       loadMyPosts();
-    } catch (error) {
-      toast.showToast('Failed to update like', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to update like'), 'error');
     }
   };
 
@@ -269,8 +305,8 @@ export default function HomeScreen() {
       const updated = await postService.getPostById(selectedPost._id);
       setSelectedPost(updated);
       loadMyPosts();
-    } catch (error) {
-      toast.showToast('Failed to add comment', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to add comment'), 'error');
     }
   };
 
@@ -363,7 +399,9 @@ export default function HomeScreen() {
         <Text style={styles.impactButtonText}>Add Impact</Text>
       </Pressable>
 
-      <Text style={styles.sectionTitle}>My AI Impact Thought</Text>
+      <MyPostActivity />
+
+      {/* <Text style={styles.sectionTitle}>My AI Impact Thought</Text>
       {posts.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>You haven't shared your AI impact thought yet.</Text>
@@ -389,7 +427,7 @@ export default function HomeScreen() {
             </View>
           </Pressable>
         ))
-      )}
+      )} */}
 
       <Modal visible={showPostModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -520,7 +558,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   impactButton: {
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
@@ -1005,7 +1043,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.semibold,
   },
   resumeButton: {
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.primary,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,

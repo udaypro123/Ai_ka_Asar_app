@@ -3,6 +3,12 @@ import { env } from './env';
 import { storage } from '../utils/storage';
 import { apiLoading } from '../utils/apiLoading';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    skipGlobalLoader?: boolean;
+  }
+}
+
 const API_BASE_URL = env.EXPO_PUBLIC_API_URL;
 const refreshClient = create({
   timeout: 15000,
@@ -18,7 +24,11 @@ const apiClient: AxiosInstance = create({
   },
 });
 
-type RetriableRequest = InternalAxiosRequestConfig & { _retry?: boolean; _loaderTracked?: boolean };
+type RetriableRequest = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+  _loaderTracked?: boolean;
+  skipGlobalLoader?: boolean;
+};
 let refreshRequest: Promise<string> | null = null;
 
 const refreshAccessToken = (): Promise<string> => {
@@ -45,7 +55,7 @@ apiClient.interceptors.request.use(async (config) => {
   const accessToken = await storage.getItem('accessToken');
   if (accessToken) config.headers.set('Authorization', `Bearer ${accessToken}`);
   const trackedConfig = config as RetriableRequest;
-  if (!trackedConfig._loaderTracked) {
+  if (!trackedConfig.skipGlobalLoader && !trackedConfig._loaderTracked) {
     trackedConfig._loaderTracked = true;
     apiLoading.start();
   }

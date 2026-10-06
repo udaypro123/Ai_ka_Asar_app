@@ -1,10 +1,15 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
 import { useAppSelector } from '../../src/store/hooks';
+import { AimargLoader } from '../../src/components/common/AimargLoader';
 import { adminService } from '../../src/services/admin.service';
 import { AdminStats, RecentActivity } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '../../src/theme';
 import { GradientScrollView } from '../../src/components/common/BackgroundGradient';
+import { ToastOnlyNotice } from '../../src/components/common/ToastOnlyNotice';
+import { useToast } from '../../src/components/common/Toast';
+import { getApiErrorMessage } from '../../src/utils/apiError';
+import { MyPostActivity } from '../../src/components/common/MyPostActivity';
 
 export default function HRDashboardScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -12,16 +17,12 @@ export default function HRDashboardScreen() {
   const [activity, setActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+  const { showToast } = useToast();
 
   const isHR = user?.roles?.includes('HR');
 
-  useEffect(() => {
-    if (isHR) {
-      loadData();
-    }
-  }, [isHR]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [statsData, activityData] = await Promise.all([
         adminService.getDashboardStats(),
@@ -29,30 +30,32 @@ export default function HRDashboardScreen() {
       ]);
       setStats(statsData);
       setActivity(activityData);
-    } catch (error) {
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, 'Could not load the HR dashboard.'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    if (isHR) loadData();
+  }, [isHR, loadData]);
 
   const onRefresh = () => {
     setRefreshing(true);
+    setActivityRefreshKey((key) => key + 1);
     loadData();
   };
 
   if (!isHR) {
-    return (
-      <GradientScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.errorText}>You do not have permission to view this page.</Text>
-      </GradientScrollView>
-    );
+    return <ToastOnlyNotice message="You do not have permission to view this page." />;
   }
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <AimargLoader />
       </View>
     );
   }
@@ -72,6 +75,8 @@ export default function HRDashboardScreen() {
           <Text style={styles.statLabel}>New Today</Text>
         </View>
       </View>
+
+      <MyPostActivity refreshKey={activityRefreshKey} />
 
       <Text style={styles.sectionTitle}>Recent Activity</Text>
       <View style={styles.card}>
@@ -195,12 +200,6 @@ const styles = StyleSheet.create({
     color: colors.auth.textSecondary,
     textAlign: 'center',
     paddingVertical: spacing.md,
-  },
-  errorText: {
-    fontSize: typography.fontSize.base,
-    color: colors.error,
-    textAlign: 'center',
-    marginTop: spacing.xl,
   },
   loadingContainer: {
     flex: 1,

@@ -54,7 +54,6 @@ export function AuthInput({
           </TouchableOpacity>
         )}
       </View>
-      {error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
 }
@@ -96,10 +95,5 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: colors.error,
-  },
-  error: {
-    color: colors.error,
-    fontSize: typography.fontSize.xs,
-    marginTop: spacing.xs,
   },
 });

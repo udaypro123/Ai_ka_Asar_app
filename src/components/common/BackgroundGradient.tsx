@@ -1,6 +1,7 @@
 import { colors } from '@/theme';
 import LinearGradient from 'react-native-linear-gradient';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { RefreshControl, StyleSheet, ScrollView, type ScrollViewProps } from 'react-native';
+import { usePageRefreshControl } from './PageRefresh';
 
 interface BackgroundGradientProps {
   children: React.ReactNode;
@@ -19,10 +20,30 @@ export function BackgroundGradient({ children }: BackgroundGradientProps) {
   );
 }
 
-export function GradientScrollView({ children, ...props }: any) {
+interface GradientScrollViewProps extends ScrollViewProps {
+  refreshing?: boolean;
+  onRefresh?: () => void;
+}
+
+export function GradientScrollView({
+  children,
+  refreshing: localRefreshing,
+  onRefresh: localOnRefresh,
+  ...props
+}: GradientScrollViewProps) {
+  const pageRefresh = usePageRefreshControl();
+  const refreshing = localRefreshing ?? pageRefresh?.refreshing ?? false;
+  const onRefresh = localOnRefresh ?? pageRefresh?.refresh;
+
   return (
     <BackgroundGradient>
-      <ScrollView {...props} style={{ flex: 1 }}>
+      <ScrollView
+        {...props}
+        refreshControl={
+          onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} /> : undefined
+        }
+        style={[{ flex: 1 }, props.style]}
+      >
         {children}
       </ScrollView>
     </BackgroundGradient>

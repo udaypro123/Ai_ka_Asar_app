@@ -33,7 +33,7 @@ export const postService = {
 };
 
 export const commentService = {
-  createComment: async (data: { postId: string; content: string }): Promise<Comment> => {
+  createComment: async (data: { postId: string; content: string; parentCommentId?: string }): Promise<Comment> => {
     const response = await api.post('/comments', data);
     return response.data.data;
   },
@@ -53,7 +53,7 @@ export const likeService = {
 
 export const adminService = {
   getAllUsers: async (): Promise<User[]> => {
-    const response = await api.get('/admin/public/users');
+    const response = await api.get('/admin/public/users', { skipGlobalLoader: true });
     return response.data.data;
   },
 
@@ -65,17 +65,17 @@ export const adminService = {
 
 export const userLikeService = {
   getInteractionSummary: async (): Promise<UserInteractionSummary[]> => {
-    const response = await api.get('/user-likes/summary');
+    const response = await api.get('/user-likes/summary', { skipGlobalLoader: true });
     return response.data.data;
   },
 
   toggleUserLike: async (userId: string, targetUserId: string): Promise<{ liked: boolean }> => {
-    const response = await api.post(`/user-likes/${targetUserId}`);
+    const response = await api.post(`/user-likes/${targetUserId}`, undefined, { skipGlobalLoader: true });
     return response.data.data;
   },
 
   getUserLikes: async (targetUserId: string): Promise<string[]> => {
-    const response = await api.get(`/user-likes/${targetUserId}`);
+    const response = await api.get(`/user-likes/${targetUserId}`, { skipGlobalLoader: true });
     return response.data.data;
   },
 };
@@ -89,12 +89,12 @@ export interface UserInteractionSummary {
 
 export const userCommentService = {
   createUserComment: async (data: { targetUserId: string; content: string }): Promise<any> => {
-    const response = await api.post('/user-comments', data);
+    const response = await api.post('/user-comments', data, { skipGlobalLoader: true });
     return response.data.data;
   },
 
   getUserComments: async (targetUserId: string): Promise<any[]> => {
-    const response = await api.get(`/user-comments/${targetUserId}`);
+    const response = await api.get(`/user-comments/${targetUserId}`, { skipGlobalLoader: true });
     return response.data.data;
   },
 };

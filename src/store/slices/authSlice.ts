@@ -1,8 +1,13 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { storage } from '../../utils/storage';
-import authService, { RegisterData } from '../../services/auth.service';
+import authService, { GoogleCredential, RegisterData } from '../../services/auth.service';
 import { User } from '../../types';
 import { userService } from '../../services/user.service';
+import { getApiErrorMessage } from '../../utils/apiError';
+
+const getAuthErrorMessage = (error: unknown, fallback: string): string => {
+  return getApiErrorMessage(error, fallback);
+};
 
 interface AuthState {
   user: User | null;
@@ -49,8 +54,8 @@ export const login = createAsyncThunk(
       const response = await authService.login(credentials);
       await storage.setAuthTokens(response.accessToken, response.refreshToken);
       return response;
-    } catch (error: any) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Login failed');
+    } catch (error: unknown) {
+      return rejectWithValue(getAuthErrorMessage(error, 'Login failed. Please try again.'));
     }
   }
 );
@@ -62,21 +67,21 @@ export const register = createAsyncThunk(
       const response = await authService.register(data);
       await storage.setAuthTokens(response.accessToken, response.refreshToken);
       return response;
-    } catch (error: any) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Registration failed');
+    } catch (error: unknown) {
+      return rejectWithValue(getAuthErrorMessage(error, 'Registration failed'));
     }
   }
 );
 
 export const googleLogin = createAsyncThunk(
   'auth/googleLogin',
-  async (idToken: string, { rejectWithValue }) => {
+  async (credential: GoogleCredential, { rejectWithValue }) => {
     try {
-      const response = await authService.googleLogin(idToken);
+      const response = await authService.googleLogin(credential);
       await storage.setAuthTokens(response.accessToken, response.refreshToken);
       return response;
     } catch (error: unknown) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Google sign-in failed');
+      return rejectWithValue(getAuthErrorMessage(error, 'Google sign-in failed'));
     }
   }
 );
@@ -95,8 +100,20 @@ export const updateProfile = createAsyncThunk(
     try {
       const response = await userService.updateProfile(data);
       return response;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Profile update failed');
+    } catch (error: unknown) {
+      return rejectWithValue(getAuthErrorMessage(error, 'Profile update failed'));
+    }
+  }
+);
+
+export const deleteAccount = createAsyncThunk(
+  'auth/deleteAccount',
+  async (_, { rejectWithValue }) => {
+    try {
+      await userService.deleteAccount();
+      await storage.clearAuthTokens();
+    } catch (error) {
+      return rejectWithValue(getAuthErrorMessage(error, 'Account deletion failed'));
     }
   }
 );
@@ -105,6 +122,9 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    setUserProfile: (state, action: PayloadAction<Partial<User>>) => {
+      if (state.user) state.user = { ...state.user, ...action.payload };
+    },
     clearError: (state) => {
       state.error = null;
     },
@@ -213,9 +233,17 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.error = action.payload as string;
+      })
+      .addCase(deleteAccount.fulfilled, (state) => {
+        state.user = null;
+        state.accessToken = null;
+        state.refreshToken = null;
+        state.isAuthenticated = false;
+        state.error = null;
+        state.isNewUser = false;
       });
   },
 });
 
-export const { clearError, setGoogleError, setLoading } = authSlice.actions;
+export const { clearError, setGoogleError, setLoading, setUserProfile } = authSlice.actions;
 export default authSlice.reducer;

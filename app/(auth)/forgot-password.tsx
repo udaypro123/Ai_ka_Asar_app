@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,8 +9,9 @@ import { AuthContainer } from '../../src/components/auth/AuthContainer';
 import { AuthInput } from '../../src/components/auth/AuthInput';
 import { AuthButton } from '../../src/components/auth/AuthButton';
 import { AuthLink } from '../../src/components/auth/AuthLink';
-import { colors, typography, spacing } from '../../src/theme';
+import { typography, spacing } from '../../src/theme';
 import { useToast } from '../../src/components/common/Toast';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -38,8 +39,8 @@ export default function ForgotPasswordScreen() {
       await authService.forgotPassword(data.email);
       setSent(true);
       toast.showToast('Reset link sent to your email', 'success');
-    } catch (error: any) {
-      toast.showToast(error.message || 'Failed to send reset email', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Failed to send reset email'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +85,14 @@ export default function ForgotPasswordScreen() {
             )}
           />
 
-          <AuthButton title="Send Reset Link" onPress={handleSubmit(onSubmit)} loading={isLoading} />
+          <AuthButton
+            title="Send Reset Link"
+            onPress={handleSubmit(onSubmit, (validationErrors) => {
+              const firstError = Object.values(validationErrors).find((item) => item?.message)?.message;
+              if (firstError) toast.showToast(firstError, 'error');
+            })}
+            loading={isLoading}
+          />
 
           <AuthLink
             text="Remember your password?"

@@ -20,6 +20,16 @@ export interface User {
   linkedinUrl?: string;
   githubUrl?: string;
   resume?: string;
+  resumePublicId?: string;
+  hasResume?: boolean;
+  privacySettings?: {
+    profileDiscoverable: boolean;
+  };
+  notificationPreferences?: {
+    email: boolean;
+    sms: boolean;
+    whatsapp: boolean;
+  };
   isBlocked?: boolean;
   isEmailVerified: boolean;
   roles: string[];
@@ -167,6 +177,7 @@ export interface Comment {
   _id: string;
   postId: string;
   userId: string;
+  parentCommentId?: string | null;
   userName: string;
   content: string;
   createdAt: string;

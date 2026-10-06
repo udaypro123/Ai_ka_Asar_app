@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAppRouter as useRouter } from '../../navigation';
 import { useAppDispatch } from '../../store/hooks';
 import { logout } from '../../store/slices/authSlice';
+import { AimargLoader } from './AimargLoader';
 
 export function DrawerLogoutButton() {
   const dispatch = useAppDispatch();
@@ -35,7 +36,7 @@ export function DrawerLogoutButton() {
       onPress={showConfirmation}
     >
       {isLoggingOut ? (
-        <ActivityIndicator color="#ffffff" />
+        <AimargLoader compact message="Logging out" />
       ) : (
         <View style={styles.content}>
           <Ionicons name="log-out-outline" size={20} color="#ffffff" />

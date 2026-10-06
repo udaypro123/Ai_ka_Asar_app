@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import authService from '../../src/services/auth.service';
 import { useToast } from '../../src/components/common/Toast';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 export default function VerifyEmailScreen() {
   const [token, setToken] = useState('');
@@ -19,8 +20,8 @@ export default function VerifyEmailScreen() {
       await authService.verifyEmail(token);
       setSuccess(true);
       toast.showToast('Email verified successfully', 'success');
-    } catch (error: any) {
-      toast.showToast(error.message || 'Verification failed', 'error');
+    } catch (error: unknown) {
+      toast.showToast(getApiErrorMessage(error, 'Verification failed'), 'error');
     } finally {
       setIsLoading(false);
     }

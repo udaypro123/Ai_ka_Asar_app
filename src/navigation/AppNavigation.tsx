@@ -81,7 +81,7 @@ function BootstrapScreen() {
 
   return (
     <View style={styles.loading}>
-      <Image source={require('../../assets/icon1.png')} style={styles.splash} resizeMode="contain" />
+      <Image source={require('../../assets/icon3.png')} style={styles.splash} resizeMode="contain" />
     </View>
   );
 }
@@ -116,9 +116,13 @@ function DrawerContent(props: DrawerContentComponentProps) {
     <View style={styles.drawer}>
       <DrawerContentScrollView {...props}>
         <View style={styles.drawerHeader}>
-          <Image source={require('../../assets/icon1.png')} style={styles.drawerIcon} />
-          <Text style={styles.drawerName}>{user?.name || 'AIMarg'}</Text>
-          <Text style={styles.drawerRole}>{user?.roles?.[0] || 'USER'}</Text>
+          <Image source={require('../../assets/icon3.png')} style={styles.drawerIcon} />
+          <View style={styles.drawerIdentity}>
+            <Text numberOfLines={1} style={styles.drawerName}>
+              {user?.name || 'AIMarg'}
+            </Text>
+            <Text style={styles.drawerRole}>{user?.roles?.[0] || 'USER'}</Text>
+          </View>
         </View>
         <DrawerItemList {...props} />
       </DrawerContentScrollView>
@@ -146,9 +150,9 @@ function UserNavigator() {
     >
       <UserDrawer.Screen name="index" component={DashboardScreen} options={{ title: 'Dashboard' }} />
       <UserDrawer.Screen name="community" component={CommunityScreen} options={{ title: 'Community' }} />
-      <UserDrawer.Screen name="impact" component={ImpactScreen} options={{ title: 'Impact' }} />
+      {/* <UserDrawer.Screen name="impact" component={ImpactScreen} options={{ title: 'Impact' }} />
       <UserDrawer.Screen name="career" component={CareerScreen} options={{ title: 'Career' }} />
-      <UserDrawer.Screen name="skills" component={SkillsScreen} options={{ title: 'Skills' }} />
+      <UserDrawer.Screen name="skills" component={SkillsScreen} options={{ title: 'Skills' }} /> */}
       <UserDrawer.Screen name="profile" component={ProfileScreen} options={{ title: 'Profile' }} />
       <UserDrawer.Screen
         name="users"
@@ -188,7 +192,7 @@ function AdminNavigator() {
     >
       <AdminDrawer.Screen name="index" component={AdminDashboardScreen} options={{ title: 'Admin Dashboard' }} />
       <AdminDrawer.Screen name="users" component={AdminUsersScreen} options={{ title: 'Manage Users' }} />
-      <AdminDrawer.Screen name="user-detail" component={AdminUserDetailScreen} options={{ title: 'User Detail' }} />
+      {/* <AdminDrawer.Screen name="user-detail" component={AdminUserDetailScreen} options={{ title: 'User Detail' }} /> */}
       <AdminDrawer.Screen name="profile" component={AdminProfileScreen} options={{ title: 'Profile' }} />
     </AdminDrawer.Navigator>
   );
@@ -242,26 +246,46 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   drawerHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingVertical: 24,
+    borderRadius: 16,
+    padding: 16,
+    // marginHorizontal: 12,
+    marginTop: 16,
     marginBottom: 12,
+    elevation: 3,
+    width:"100%"
   },
   drawerIcon: {
-    height: 64,
-    width: 64,
-    borderRadius: 32,
-    marginBottom: 10,
+    height: 52,
+    width: 52,
+    borderRadius: 26,
+    backgroundColor: colors.white,
+    padding: 5,
+    marginRight: 12,
+  },
+  drawerIdentity: {
+    flex: 1,
+    minWidth: 0,
   },
   drawerName: {
     color: colors.white,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
   },
   drawerRole: {
     color: colors.white,
     fontSize: 12,
-    marginTop: 4,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 6,
   },
   drawerLogout: {
     paddingHorizontal: 12,

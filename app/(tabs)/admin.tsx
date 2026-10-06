@@ -1,10 +1,14 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
 import { useAppSelector } from '../../src/store/hooks';
+import { AimargLoader } from '../../src/components/common/AimargLoader';
 import { adminService } from '../../src/services/admin.service';
 import { AdminStats, RecentActivity } from '../../src/types';
 import { borderRadius, colors, spacing, typography } from '@/theme';
 import { GradientScrollView } from '@/components/common/BackgroundGradient';
+import { ToastOnlyNotice } from '../../src/components/common/ToastOnlyNotice';
+import { useToast } from '../../src/components/common/Toast';
+import { getApiErrorMessage } from '../../src/utils/apiError';
 
 export default function AdminDashboardScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -12,16 +16,11 @@ export default function AdminDashboardScreen() {
   const [activity, setActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { showToast } = useToast();
 
   const isAdmin = user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPER_ADMIN') || user?.roles?.includes('HR');
 
-  useEffect(() => {
-    if (isAdmin) {
-      loadData();
-    }
-  }, [isAdmin]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [statsData, activityData] = await Promise.all([
         adminService.getDashboardStats(),
@@ -29,12 +28,17 @@ export default function AdminDashboardScreen() {
       ]);
       setStats(statsData);
       setActivity(activityData);
-    } catch (error) {
+    } catch (error: unknown) {
+      showToast(getApiErrorMessage(error, 'Could not load the admin dashboard.'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    if (isAdmin) void loadData();
+  }, [isAdmin, loadData]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -42,17 +46,13 @@ export default function AdminDashboardScreen() {
   };
 
   if (!isAdmin) {
-    return (
-      <GradientScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.errorText}>You do not have permission to view this page.</Text>
-      </GradientScrollView>
-    );
+    return <ToastOnlyNotice message="You do not have permission to view this page." />;
   }
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <AimargLoader />
       </View>
     );
   }
@@ -228,12 +228,6 @@ const styles = StyleSheet.create({
     color: colors.auth.textSecondary,
     textAlign: 'center',
     paddingVertical: spacing.md,
-  },
-  errorText: {
-    fontSize: typography.fontSize.base,
-    color: colors.error,
-    textAlign: 'center',
-    marginTop: spacing.xl,
   },
   loadingContainer: {
     flex: 1,

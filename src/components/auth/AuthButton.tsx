@@ -1,5 +1,6 @@
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text, Pressable, StyleSheet } from 'react-native';
 import { colors, typography, spacing, borderRadius } from '../../theme';
+import { AimargLoader } from '../common/AimargLoader';
 
 interface AuthButtonProps {
   title: string;
@@ -16,7 +17,7 @@ export function AuthButton({ title, onPress, disabled, loading }: AuthButtonProp
       disabled={disabled || loading}
     >
       {loading ? (
-        <ActivityIndicator color={colors.white} />
+        <AimargLoader compact message="Loading" />
       ) : (
         <Text style={styles.text}>{title}</Text>
       )}

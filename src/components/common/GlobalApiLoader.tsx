@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { apiLoading } from '../../utils/apiLoading';
-import { colors } from '../../theme';
+import { AimargLoader } from './AimargLoader';
 
 export function GlobalApiLoader() {
   const [isLoading, setIsLoading] = useState(false);
@@ -12,7 +12,7 @@ export function GlobalApiLoader() {
 
   return (
     <View style={styles.overlay} accessibilityRole="progressbar" accessibilityLabel="Loading">
-      <ActivityIndicator size="large" color={colors.primary} />
+      <AimargLoader compact message="Loading" />
     </View>
   );
 }
