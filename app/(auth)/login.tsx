@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAppRouter as useRouter } from '@/navigation';
@@ -23,6 +24,7 @@ import { typography, spacing } from '../../src/theme';
 import { storage } from '../../src/utils/storage';
 import { useToast } from '../../src/components/common/Toast';
 import { getApiErrorMessage } from '../../src/utils/apiError';
+import { getPostAuthRoute } from '../../src/navigation/postAuthRoute';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -32,14 +34,11 @@ export default function LoginScreen() {
 
   const dispatch = useAppDispatch();
 
-  const { isLoading, isAuthenticated, isNewUser, user } = useAppSelector(
-    (state) => state.auth
-  );
+  const { isLoading, isAuthenticated, user } = useAppSelector((state) => state.auth);
   const toast = useToast();
 
   const navigation = useNavigation<any>();
   const router = useRouter();
-  const hasNavigated = useRef(false);
 
   useEffect(() => {
     const loadSavedEmail = async () => {
@@ -78,33 +77,12 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
-      await dispatch(login({ email, password })).unwrap();
+      const response = await dispatch(login({ email: email.trim(), password })).unwrap();
+      router.replace(getPostAuthRoute(response.user));
     } catch (error: unknown) {
       toast.showToast(getApiErrorMessage(error, 'Login failed. Please try again.'), 'error');
     }
   };
-
-  useEffect(() => {
-    if (isAuthenticated && user && !hasNavigated.current) {
-      hasNavigated.current = true;
-
-      if (isNewUser) {
-        router.replace('(onboarding)' as any);
-      } else if (user.roles && user.roles.length > 0) {
-        const role = user.roles[0];
-
-        if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
-          router.replace('(admin)' as any);
-        } else if (role === 'HR') {
-          router.replace('(hr)' as any);
-        } else {
-          router.replace('(tabs)' as any);
-        }
-      } else {
-        router.replace('(onboarding)' as any);
-      }
-    }
-  }, [isAuthenticated, isNewUser, user, router]);
 
   if (isAuthenticated && user) {
     return null;
@@ -119,7 +97,11 @@ export default function LoginScreen() {
         style={styles.keyboard}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.loginWrapper}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.loginWrapper}>
 
           <Image
             source={require('../../assets/icon3.png')}
@@ -200,7 +182,8 @@ export default function LoginScreen() {
               disabled={isLoading}
               mode="signin"
               onCredential={async (credential) => {
-                await dispatch(googleLogin(credential)).unwrap();
+                const response = await dispatch(googleLogin(credential)).unwrap();
+                router.replace(getPostAuthRoute(response.user, response.isNewUser));
               }}
               onError={(message) => toast.showToast(message, 'error')}
             />
@@ -211,7 +194,15 @@ export default function LoginScreen() {
               onPress={() => navigation.navigate('register')}
             />
           </View>
-        </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => navigation.navigate('how-it-works')}
+              style={styles.howItWorksLink}
+            >
+              <Text style={styles.howItWorksText}>Know how app will work</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </AuthContainer>
   );
@@ -220,13 +211,32 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   keyboard: {
     flex: 1,
+  },
+
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: spacing.md,
   },
 
   loginWrapper: {
     width: '100%',
     alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+
+  howItWorksLink: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xs,
+  },
+
+  howItWorksText: {
+    color: '#1359f0',
+    fontSize: typography.fontSize.sm,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 
   brandMark: {

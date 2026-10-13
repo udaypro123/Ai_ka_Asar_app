@@ -73,9 +73,6 @@ export default function UsersListScreen() {
               {u.currentRole && (
                 <Text style={styles.listItemDetail}>{u.currentRole} {u.company ? `at ${u.company}` : ''}</Text>
               )}
-              {u.mobile && (
-                <Text style={styles.listItemDetail}>Mobile: {u.mobile}</Text>
-              )}
               <Text style={styles.listItemDate}>
                 Joined {new Date(u.createdAt).toLocaleDateString()}
               </Text>

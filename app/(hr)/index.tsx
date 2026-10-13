@@ -76,10 +76,10 @@ export default function HRDashboardScreen() {
           <Text style={styles.statLabel}>New Today</Text>
         </View>
       </View>
-
-      <MyPostActivity refreshKey={activityRefreshKey} />
       <ProfileInteractions refreshKey={activityRefreshKey} />
 
+      <MyPostActivity refreshKey={activityRefreshKey} />
+      
       <Text style={styles.sectionTitle}>Recent Activity</Text>
       <View style={styles.card}>
         {activity.length === 0 ? (

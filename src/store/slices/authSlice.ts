@@ -134,6 +134,9 @@ const authSlice = createSlice({
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
     },
+    completeOnboarding: (state) => {
+      state.isNewUser = false;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -245,5 +248,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setGoogleError, setLoading, setUserProfile } = authSlice.actions;
+export const { clearError, completeOnboarding, setGoogleError, setLoading, setUserProfile } = authSlice.actions;
 export default authSlice.reducer;

@@ -36,10 +36,13 @@ export function ThreadedComments<T extends ThreadComment>({
         style={[styles.branch, depth > 0 && styles.nestedBranch]}
       >
         <View style={styles.comment}>
-          <Text style={styles.author}>{comment.userName}</Text>
+          <View style={styles.author}>
+            <Text> {comment.userName} </Text>
+            <Text style={styles.date}>{new Date(comment.createdAt).toLocaleDateString()}</Text>
+          </View>
           <Text style={styles.content}>{comment.content}</Text>
           <View style={styles.footer}>
-            <Text style={styles.date}>{new Date(comment.createdAt).toLocaleDateString()}</Text>
+
             {onReply && (
               <Pressable onPress={() => onReply(comment)}>
                 <Text style={styles.reply}>Reply</Text>
@@ -76,6 +79,9 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
     marginBottom: spacing.xs,
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   content: {
     color: colors.auth.textSecondary,

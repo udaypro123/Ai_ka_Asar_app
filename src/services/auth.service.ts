@@ -11,6 +11,7 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
+  signupToken: string;
   role: AccountRole;
 }
 
@@ -34,6 +35,15 @@ const authService = {
 
   register: async (data: RegisterData): Promise<AuthResponse> => {
     const response = await api.post('/auth/register', data);
+    return response.data.data;
+  },
+
+  sendSignupOtp: async (email: string): Promise<void> => {
+    await api.post('/auth/signup/send-otp', { email });
+  },
+
+  verifySignupOtp: async (email: string, otp: string): Promise<{ signupToken: string }> => {
+    const response = await api.post('/auth/signup/verify-otp', { email, otp });
     return response.data.data;
   },
 

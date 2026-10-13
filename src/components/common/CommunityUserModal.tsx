@@ -145,17 +145,13 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
 
           <Text style={styles.sectionTitle}>Contact</Text>
           <ProfileDetail label="Email" value={user.email} />
-          <ProfileDetail label="Mobile" value={user.mobile} />
 
           <Text style={styles.sectionTitle}>Professional Details</Text>
           <ProfileDetail label="Current Role" value={user.currentRole} />
           <ProfileDetail label="Previous Role" value={user.previousRole} />
           <ProfileDetail label="Current Company" value={user.company} />
           <ProfileDetail label="Previous Company" value={user.previousCompany} />
-          <ProfileDetail label="Employment Status" value={user.employmentStatus} />
           <ProfileDetail label="Experience" value={user.experience} />
-          <ProfileDetail label="Profession" value={user.profession} />
-          <ProfileDetail label="Industry" value={user.industry} />
 
           {(user.hasResume || user.resume) && (
             <>
@@ -212,6 +208,23 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
             </Pressable>
           </View>
 
+          <View style={styles.commentInputRow}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder={replyTarget ? 'Write a reply...' : 'Add a comment...'}
+              value={commentText}
+              onChangeText={setCommentText}
+              maxLength={500}
+            />
+            <Pressable
+              disabled={submittingComment || !commentText.trim()}
+              style={[styles.commentSend, (submittingComment || !commentText.trim()) && styles.commentSendDisabled]}
+              onPress={handleAddComment}
+            >
+              <Text style={styles.commentSendText}>{submittingComment ? 'Posting...' : 'Post'}</Text>
+            </Pressable>
+          </View>
+
           <View style={styles.commentsSection}>
             <Text style={styles.commentsTitle}>Comments ({commentCount})</Text>
             <ScrollView
@@ -237,22 +250,7 @@ export function CommunityUserModal({ user, currentUserId, onClose, onInteraction
                 </Pressable>
               </View>
             )}
-            <View style={styles.commentInputRow}>
-              <TextInput
-                style={styles.commentInput}
-                placeholder={replyTarget ? 'Write a reply...' : 'Add a comment...'}
-                value={commentText}
-                onChangeText={setCommentText}
-                maxLength={500}
-              />
-              <Pressable
-                disabled={submittingComment || !commentText.trim()}
-                style={[styles.commentSend, (submittingComment || !commentText.trim()) && styles.commentSendDisabled]}
-                onPress={handleAddComment}
-              >
-                <Text style={styles.commentSendText}>{submittingComment ? 'Posting...' : 'Post'}</Text>
-              </Pressable>
-            </View>
+
           </View>
         </ScrollView>
       </View>

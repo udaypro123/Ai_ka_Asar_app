@@ -2,6 +2,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type AuthStackParamList = {
   login: undefined;
+  'how-it-works': undefined;
   register: undefined;
   'forgot-password': undefined;
   'reset-password': undefined;
@@ -10,8 +11,6 @@ export type AuthStackParamList = {
 
 export type OnboardingStackParamList = {
   welcome: undefined;
-  profession: undefined;
-  'career-profile': undefined;
   assessment: undefined;
 };
 

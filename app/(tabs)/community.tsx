@@ -158,7 +158,6 @@ export default function CommunityScreen() {
                       {u.currentRole || u.roles[0] || 'USER'}
                       {u.company ? ` at ${u.company}` : ''}
                     </Text>
-                    {u.mobile && <Text style={styles.userMobile}>{u.mobile}</Text>}
                   </View>
                   <View style={styles.arrowContainer}>
                     <Text style={styles.arrow}>›</Text>
@@ -351,10 +350,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: typography.fontWeight.medium,
     marginBottom: 2,
-  },
-  userMobile: {
-    fontSize: typography.fontSize.xs,
-    color: colors.auth.textSecondary,
   },
   arrowContainer: {
     justifyContent: 'center',

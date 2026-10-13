@@ -16,10 +16,12 @@ uses React Navigation; Expo SDK and Expo Router are not used.
 npm ci
 ```
 
-Copy `.env.example` to `.env`, then set `API_URL` to an API server reachable by
-the device. Use `http://10.0.2.2:5000/api/v1` for the Android emulator, the
+Copy `.env.example` to `.env`, then set `EXPO_PUBLIC_API_URL` to an API server
+reachable by the device. Use `http://10.0.2.2:5000/api/v1` for the Android emulator, the
 development computer's LAN IP for a physical device, or `http://localhost:5000/api/v1`
-for the iOS simulator. Release builds require HTTPS.
+for the iOS simulator. For Play Store/release builds, set it to the production
+HTTPS API URL (for example, `https://aimarg.algosaathi.com/api/v1`). Android
+release builds read `.env` through `react-native-config`; rebuild after changing it.
 
 For Android, set `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` in `.env` and create an
 Android OAuth client in Google Cloud Console for package `com.AIMarg.app` and

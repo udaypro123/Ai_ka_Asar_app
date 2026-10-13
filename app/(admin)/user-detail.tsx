@@ -95,17 +95,13 @@ export default function UserDetailScreen() {
 
         <Text style={styles.sectionTitle}>Contact Information</Text>
         <InfoRow label="Email" value={profile.email} />
-        <InfoRow label="Mobile" value={profile.mobile} />
 
         <Text style={styles.sectionTitle}>Professional Details</Text>
         <InfoRow label="Current Role" value={profile.currentRole} />
         <InfoRow label="Previous Role" value={profile.previousRole} />
         <InfoRow label="Current Company" value={profile.company} />
         <InfoRow label="Previous Company" value={profile.previousCompany} />
-        <InfoRow label="Employment Status" value={profile.employmentStatus} />
         <InfoRow label="Experience" value={profile.experience} />
-        <InfoRow label="Profession" value={profile.profession} />
-        <InfoRow label="Industry" value={profile.industry} />
 
         <Text style={styles.sectionTitle}>Job Description</Text>
         {profile.jobDescription ? (

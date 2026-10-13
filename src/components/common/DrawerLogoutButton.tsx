@@ -39,7 +39,7 @@ export function DrawerLogoutButton() {
         <AimargLoader compact message="Logging out" />
       ) : (
         <View style={styles.content}>
-          <Ionicons name="log-out-outline" size={20} color="#ffffff" />
+          <Ionicons name="log-out-outline" size={20} color="#BE123C" />
           <Text style={styles.label}>Logout</Text>
         </View>
       )}
@@ -49,15 +49,17 @@ export function DrawerLogoutButton() {
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 48,
+    minHeight: 52,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f80000b0',
-    borderRadius: 8,
+    backgroundColor: '#FFF1F2',
+    borderWidth: 1,
+    borderColor: '#FECDD3',
+    borderRadius: 14,
     paddingHorizontal: 16,
   },
   buttonPressed: {
-    backgroundColor: '#dc2626',
+    backgroundColor: '#FFE4E6',
   },
   content: {
     flexDirection: 'row',
@@ -65,8 +67,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    color: '#ffffff',
+    color: '#BE123C',
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

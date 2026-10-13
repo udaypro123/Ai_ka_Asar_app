@@ -18,8 +18,13 @@ import { borderRadius, colors, spacing, typography } from '../../theme';
 import { useAppRouter as useRouter } from '../../navigation';
 import { usePageRefresh } from '../common/PageRefresh';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { getProfileValidationError } from '../../utils/profileValidation';
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  notificationChannelOptions,
+  type NotificationChannel,
+} from '../../features/notifications';
 
-const defaultNotifications = { email: true, sms: false, whatsapp: false };
 const defaultPrivacy = { profileDiscoverable: true };
 
 interface ProfileScreenProps {
@@ -32,27 +37,21 @@ export default function ProfileScreen({ showResume = false }: ProfileScreenProps
   const toast = useToast();
   const router = useRouter();
   const [name, setName] = useState(user?.name ?? '');
-  const [mobile, setMobile] = useState(user?.mobile ?? '');
   const [country, setCountry] = useState(user?.country ?? '');
-  const [profession, setProfession] = useState(user?.profession ?? '');
-  const [industry, setIndustry] = useState(user?.industry ?? '');
   const [experience, setExperience] = useState(user?.experience ?? '');
-  const [employmentStatus, setEmploymentStatus] = useState(user?.employmentStatus ?? '');
   const [currentRole, setCurrentRole] = useState(user?.currentRole ?? '');
   const [previousRole, setPreviousRole] = useState(user?.previousRole ?? '');
   const [previousCompany, setPreviousCompany] = useState(user?.previousCompany ?? '');
   const [company, setCompany] = useState(user?.company ?? '');
   const [jobDescription, setJobDescription] = useState(user?.jobDescription ?? '');
   const [skills, setSkills] = useState(user?.skills?.join(', ') ?? '');
-  const [careerGoal, setCareerGoal] = useState(user?.careerGoal ?? '');
   const [aiUsage, setAiUsage] = useState(user?.aiUsage ?? '');
-  const [aiImpactStatus, setAiImpactStatus] = useState(user?.aiImpactStatus ?? '');
   const [linkedinUrl, setLinkedinUrl] = useState(user?.linkedinUrl ?? '');
   const [githubUrl, setGithubUrl] = useState(user?.githubUrl ?? '');
   const [resumeName, setResumeName] = useState<string | null>(null);
   const [privacySettings, setPrivacySettings] = useState(user?.privacySettings ?? defaultPrivacy);
   const [notificationPreferences, setNotificationPreferences] = useState(
-    user?.notificationPreferences ?? defaultNotifications
+    user?.notificationPreferences ?? DEFAULT_NOTIFICATION_PREFERENCES
   );
   const [saving, setSaving] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
@@ -69,31 +68,39 @@ export default function ProfileScreen({ showResume = false }: ProfileScreenProps
 
   useEffect(() => {
     setName(user?.name ?? '');
-    setMobile(user?.mobile ?? '');
     setCountry(user?.country ?? '');
-    setProfession(user?.profession ?? '');
-    setIndustry(user?.industry ?? '');
     setExperience(user?.experience ?? '');
-    setEmploymentStatus(user?.employmentStatus ?? '');
     setCurrentRole(user?.currentRole ?? '');
     setPreviousRole(user?.previousRole ?? '');
     setPreviousCompany(user?.previousCompany ?? '');
     setCompany(user?.company ?? '');
     setJobDescription(user?.jobDescription ?? '');
     setSkills(user?.skills?.join(', ') ?? '');
-    setCareerGoal(user?.careerGoal ?? '');
     setAiUsage(user?.aiUsage ?? '');
-    setAiImpactStatus(user?.aiImpactStatus ?? '');
     setLinkedinUrl(user?.linkedinUrl ?? '');
     setGithubUrl(user?.githubUrl ?? '');
     setPrivacySettings(user?.privacySettings ?? defaultPrivacy);
-    setNotificationPreferences(user?.notificationPreferences ?? defaultNotifications);
+    setNotificationPreferences(user?.notificationPreferences ?? DEFAULT_NOTIFICATION_PREFERENCES);
     setResumeName(user?.resume?.split('/').pop() ?? null);
   }, [user]);
 
   const handleSaveProfile = async () => {
-    if (!name.trim()) {
-      toast.showToast('Name is required', 'error');
+    const validationError = getProfileValidationError({
+      name,
+      country,
+      experience,
+      currentRole,
+      previousRole,
+      previousCompany,
+      company,
+      jobDescription,
+      skills: skills.split(',').map((skill) => skill.trim()).filter(Boolean),
+      linkedinUrl,
+      githubUrl,
+      resume: resumeName || user?.resume || '',
+    });
+    if (validationError) {
+      toast.showToast(validationError, 'error');
       return;
     }
     setSaving(true);
@@ -101,21 +108,15 @@ export default function ProfileScreen({ showResume = false }: ProfileScreenProps
       await dispatch(
         updateProfile({
           name: name.trim(),
-          mobile: mobile.trim(),
           country: country.trim(),
-          profession: profession.trim(),
-          industry: industry.trim(),
           experience: experience.trim(),
-          employmentStatus: employmentStatus.trim(),
           currentRole: currentRole.trim(),
           previousRole: previousRole.trim(),
           previousCompany: previousCompany.trim(),
           company: company.trim(),
           jobDescription: jobDescription.trim(),
           skills: skills.split(',').map((skill) => skill.trim()).filter(Boolean),
-          careerGoal: careerGoal.trim(),
           aiUsage: aiUsage.trim(),
-          aiImpactStatus: aiImpactStatus.trim(),
           linkedinUrl: linkedinUrl.trim(),
           githubUrl: githubUrl.trim(),
         })
@@ -145,7 +146,7 @@ export default function ProfileScreen({ showResume = false }: ProfileScreenProps
   };
 
   const saveNotificationPreferences = async (
-    key: keyof typeof defaultNotifications,
+    key: NotificationChannel,
     value: boolean
   ) => {
     const previousPreferences = notificationPreferences;
@@ -244,33 +245,31 @@ export default function ProfileScreen({ showResume = false }: ProfileScreenProps
           <Text style={styles.avatarText}>{user?.name?.charAt(0).toUpperCase() || 'U'}</Text>
         </View>
         <Text style={styles.name}>{user?.name || 'User'}</Text>
-        <Text style={styles.email}>{user?.email || ''}</Text>
+        <Text style={styles.email}>
+          {user?.email || ''}
+        </Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Profile details</Text>
         <View style={styles.card}>
-          <ProfileField label="Full name" value={name} onChangeText={setName} />
-          <ProfileField label="Mobile number" value={mobile} onChangeText={setMobile} keyboardType="phone-pad" />
-          <ProfileField label="Country" value={country} onChangeText={setCountry} />
-          <ProfileField label="Profession" value={profession} onChangeText={setProfession} />
-          <ProfileField label="Industry" value={industry} onChangeText={setIndustry} />
-          <ProfileField label="Experience" value={experience} onChangeText={setExperience} />
-          <ProfileField label="Employment status" value={employmentStatus} onChangeText={setEmploymentStatus} />
-          <ProfileField label="Current role" value={currentRole} onChangeText={setCurrentRole} />
-          <ProfileField label="Previous role" value={previousRole} onChangeText={setPreviousRole} />
-          <ProfileField label="Current company" value={company} onChangeText={setCompany} />
-          <ProfileField label="Previous company" value={previousCompany} onChangeText={setPreviousCompany} />
-          <ProfileField label="Job description" value={jobDescription} onChangeText={setJobDescription} multiline />
-          <ProfileField label="Skills (comma separated)" value={skills} onChangeText={setSkills} multiline />
-          <ProfileField label="Career goal" value={careerGoal} onChangeText={setCareerGoal} multiline />
+          <ProfileField label="Full name" value={name} onChangeText={setName} required />
+          <ProfileField label="Country" value={country} onChangeText={setCountry} required />
+          <ProfileField label="Experience" value={experience} onChangeText={setExperience} required />
+          <ProfileField label="Current role" value={currentRole} onChangeText={setCurrentRole} required />
+          <ProfileField label="Previous role" value={previousRole} onChangeText={setPreviousRole} required />
+          <ProfileField label="Current company" value={company} onChangeText={setCompany} required />
+          <ProfileField label="Previous company" value={previousCompany} onChangeText={setPreviousCompany} required />
+          <ProfileField label="Job description" value={jobDescription} onChangeText={setJobDescription} multiline required />
+          <ProfileField label="Skills (comma separated)" value={skills} onChangeText={setSkills} multiline required />
           <ProfileField label="AI usage" value={aiUsage} onChangeText={setAiUsage} multiline />
-          <ProfileField label="AI impact status" value={aiImpactStatus} onChangeText={setAiImpactStatus} />
-          <ProfileField label="LinkedIn URL" value={linkedinUrl} onChangeText={setLinkedinUrl} autoCapitalize="none" />
-          <ProfileField label="GitHub URL" value={githubUrl} onChangeText={setGithubUrl} autoCapitalize="none" />
+          <ProfileField label="LinkedIn URL" value={linkedinUrl} onChangeText={setLinkedinUrl} autoCapitalize="none" required />
+          <ProfileField label="GitHub URL" value={githubUrl} onChangeText={setGithubUrl} autoCapitalize="none" required />
           {showResume && (
             <>
-              <Text style={styles.fieldLabel}>Resume (PDF or DOCX only)</Text>
+              <Text style={styles.fieldLabel}>
+                Resume (PDF or DOCX only)<Text style={styles.requiredMark}> *</Text>
+              </Text>
               <Pressable style={styles.secondaryButton} onPress={handleResumePick} disabled={uploadingResume}>
                 <Text style={styles.secondaryButtonText}>
                   {uploadingResume ? 'Uploading...' : resumeName ? 'Replace resume' : 'Upload resume'}
@@ -308,27 +307,16 @@ export default function ProfileScreen({ showResume = false }: ProfileScreenProps
         </Pressable>
         {notificationsExpanded && (
           <View style={[styles.card, styles.settingsCard]}>
-            <PreferenceRow
-              title="Email"
-              description="Receive account notifications by email."
-              value={notificationPreferences.email}
-              disabled={savingSettings}
-              onValueChange={(value) => saveNotificationPreferences('email', value)}
-            />
-            <PreferenceRow
-              title="SMS"
-              description="Receive notifications by text message."
-              value={notificationPreferences.sms}
-              disabled={savingSettings}
-              onValueChange={(value) => saveNotificationPreferences('sms', value)}
-            />
-            <PreferenceRow
-              title="WhatsApp"
-              description="Receive notifications through WhatsApp."
-              value={notificationPreferences.whatsapp}
-              disabled={savingSettings}
-              onValueChange={(value) => saveNotificationPreferences('whatsapp', value)}
-            />
+            {notificationChannelOptions.map(({ channel, title, description }) => (
+              <PreferenceRow
+                key={channel}
+                title={title}
+                description={description}
+                value={notificationPreferences[channel]}
+                disabled={savingSettings}
+                onValueChange={(value) => saveNotificationPreferences(channel, value)}
+              />
+            ))}
           </View>
         )}
         <Pressable style={styles.menuItem} onPress={confirmDeleteAccount}>
@@ -347,6 +335,7 @@ interface ProfileFieldProps {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
+  required?: boolean;
   keyboardType?: 'default' | 'phone-pad';
   autoCapitalize?: 'none' | 'sentences';
   multiline?: boolean;
@@ -356,13 +345,16 @@ function ProfileField({
   label,
   value,
   onChangeText,
+  required = false,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
   multiline = false,
 }: ProfileFieldProps) {
   return (
     <>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={styles.fieldLabel}>
+        {label}{required && <Text style={styles.requiredMark}> *</Text>}
+      </Text>
       <TextInput
         style={[styles.input, multiline && styles.textArea]}
         value={value}
@@ -443,6 +435,9 @@ const styles = StyleSheet.create({
     color: colors.auth.text,
     marginBottom: spacing.xs,
     marginTop: spacing.md,
+  },
+  requiredMark: {
+    color: colors.error,
   },
   input: {
     backgroundColor: colors.white,

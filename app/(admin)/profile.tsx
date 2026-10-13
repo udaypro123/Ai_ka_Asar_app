@@ -1,1 +1,5 @@
-export { default } from '../../src/components/profile/ProfileScreen';
+import ProfileScreen from '../../src/components/profile/ProfileScreen';
+
+export default function AdminProfileScreen() {
+  return <ProfileScreen showResume />;
+}

@@ -12,6 +12,7 @@ import { useAppRouter as useRouter } from '@/navigation';
 import * as DocumentPicker from '../../src/utils/documentPicker';
 import { usePageRefresh } from '../../src/components/common/PageRefresh';
 import { getApiErrorMessage } from '../../src/utils/apiError';
+import { getProfileValidationError } from '../../src/utils/profileValidation';
 
 export default function UserDashboardScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -22,7 +23,6 @@ export default function UserDashboardScreen() {
   const [profile, setProfile] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    mobile: user?.mobile || '',
     currentRole: user?.currentRole || '',
     previousRole: user?.previousRole || '',
     previousCompany: user?.previousCompany || '',
@@ -68,8 +68,7 @@ export default function UserDashboardScreen() {
     return !!(
       profile.currentRole &&
       profile.company &&
-      profile.skills &&
-      profile.mobile
+      profile.skills
     );
   }, [profile]);
 
@@ -97,7 +96,6 @@ export default function UserDashboardScreen() {
     setProfile({
       name: latestProfile.name || '',
       email: latestProfile.email || '',
-      mobile: latestProfile.mobile || '',
       currentRole: latestProfile.currentRole || '',
       previousRole: latestProfile.previousRole || '',
       previousCompany: latestProfile.previousCompany || '',
@@ -113,6 +111,24 @@ export default function UserDashboardScreen() {
   });
 
   const handleSaveProfile = async () => {
+    const validationError = getProfileValidationError({
+      name: profile.name,
+      country: user?.country,
+      experience: user?.experience,
+      currentRole: profile.currentRole,
+      previousRole: profile.previousRole,
+      previousCompany: profile.previousCompany,
+      company: profile.company,
+      jobDescription: profile.jobDescription,
+      skills: profile.skills.split(',').map((skill) => skill.trim()).filter(Boolean),
+      linkedinUrl: profile.linkedinUrl,
+      githubUrl: profile.githubUrl,
+      resume: resumeName || user?.resume || '',
+    });
+    if (validationError) {
+      toast.showToast(validationError, 'error');
+      return;
+    }
     setSavingProfile(true);
     try {
       const skillsArray = profile.skills
@@ -123,7 +139,6 @@ export default function UserDashboardScreen() {
         updateProfile({
           name: profile.name,
           email: profile.email,
-          mobile: profile.mobile,
           currentRole: profile.currentRole,
           previousRole: profile.previousRole,
           previousCompany: profile.previousCompany,
@@ -177,7 +192,7 @@ export default function UserDashboardScreen() {
 
   const handleImpactPress = () => {
     if (!isProfileComplete) {
-      Alert.alert('Complete Your Profile', 'Please fill in your current role, company, skills, and mobile number to continue.', [
+      Alert.alert('Complete Your Profile', 'Please fill in your current role, company, and skills to continue.', [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Go to Profile',
@@ -289,8 +304,6 @@ export default function UserDashboardScreen() {
     return post.likes.includes(user?._id || '');
   };
 
-  const isHR = user?.roles?.includes('HR');
-
   return (
     <GradientScrollView contentContainerStyle={styles.content}>
       <Text style={styles.greeting}>{greeting}, {user?.name?.split(' ')?.[0] || 'User'}</Text>
@@ -308,10 +321,6 @@ export default function UserDashboardScreen() {
         <View style={styles.profileRow}>
           <Text style={styles.profileLabel}>Email</Text>
           <TextInput style={styles.profileInput} value={profile.email} onChangeText={(text) => setProfile({ ...profile, email: text })} keyboardType="email-address" autoCapitalize="none" />
-        </View>
-        <View style={styles.profileRow}>
-          <Text style={styles.profileLabel}>Mobile Number</Text>
-          <TextInput style={styles.profileInput} value={profile.mobile} onChangeText={(text) => setProfile({ ...profile, mobile: text })} keyboardType="phone-pad" placeholder="For HR contact" />
         </View>
         <View style={styles.profileRow}>
           <Text style={styles.profileLabel}>Current Role</Text>
@@ -456,20 +465,6 @@ export default function UserDashboardScreen() {
                   </View>
                 )}
                 <Text style={styles.modalPostContent}>{selectedPost.content}</Text>
-                {isHR && selectedPost.user && (
-                  <Pressable
-                    style={styles.contactButton}
-                    onPress={() => {
-                      if (selectedPost.user?.mobile) {
-                        Alert.alert('Contact User', `Mobile: ${selectedPost.user.mobile}`);
-                      } else {
-                        Alert.alert('Contact', 'Mobile number not available');
-                      }
-                    }}
-                  >
-                    <Text style={styles.contactButtonText}>📞 Contact User</Text>
-                  </Pressable>
-                )}
                 <View style={styles.modalPostActions}>
                   <Pressable style={styles.likeButton} onPress={() => handleLike(selectedPost._id)}>
                     <Text style={[styles.likeButtonText, isLiked(selectedPost) && styles.likedText]}>
@@ -798,19 +793,6 @@ const styles = StyleSheet.create({
     color: colors.auth.text,
     lineHeight: 22,
     marginBottom: spacing.md,
-  },
-  contactButton: {
-    backgroundColor: colors.secondary,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  contactButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
   },
   modalPostActions: {
     flexDirection: 'row',

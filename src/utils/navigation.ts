@@ -8,8 +8,6 @@ export type AuthStackParamList = {
 
 export type OnboardingStackParamList = {
   welcome: undefined;
-  profession: undefined;
-  'career-profile': undefined;
   assessment: undefined;
 };
 

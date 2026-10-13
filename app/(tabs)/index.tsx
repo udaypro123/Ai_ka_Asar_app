@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal } from 'react-native';
 import { useState, useEffect, useMemo } from 'react';
 import { useAppSelector, useAppDispatch } from '../../src/store/hooks';
 import { setUserProfile, updateProfile } from '../../src/store/slices/authSlice';
@@ -25,7 +25,6 @@ export default function HomeScreen() {
   const [profile, setProfile] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    mobile: user?.mobile || '',
     currentRole: user?.currentRole || '',
     previousRole: user?.previousRole || '',
     previousCompany: user?.previousCompany || '',
@@ -75,7 +74,6 @@ export default function HomeScreen() {
       setProfile({
         name: data.name || '',
         email: data.email || '',
-        mobile: data.mobile || '',
         currentRole: data.currentRole || '',
         previousRole: data.previousRole || '',
         previousCompany: data.previousCompany || '',
@@ -103,8 +101,7 @@ export default function HomeScreen() {
     return !!(
       profile.currentRole &&
       profile.company &&
-      profile.skills &&
-      profile.mobile
+      profile.skills
     );
   }, [profile]);
 
@@ -132,7 +129,6 @@ export default function HomeScreen() {
     setProfile({
       name: latestProfile.name || '',
       email: latestProfile.email || '',
-      mobile: latestProfile.mobile || '',
       currentRole: latestProfile.currentRole || '',
       previousRole: latestProfile.previousRole || '',
       previousCompany: latestProfile.previousCompany || '',
@@ -158,7 +154,6 @@ export default function HomeScreen() {
         updateProfile({
           name: profile.name,
           email: profile.email,
-          mobile: profile.mobile,
           currentRole: profile.currentRole,
           previousRole: profile.previousRole,
           previousCompany: profile.previousCompany,
@@ -315,8 +310,6 @@ export default function HomeScreen() {
     return post.likes.includes(user?._id || '');
   };
 
-  const isHR = user?.roles?.includes('HR');
-
   return (
     <GradientScrollView contentContainerStyle={styles.content}>
       <Text style={styles.greeting}>{greeting}, {user?.name?.split(' ')?.[0] || 'User'}</Text>
@@ -337,11 +330,11 @@ export default function HomeScreen() {
           <View style={styles.resumeHeaderText}>
             <Text style={styles.resumeName}>{profile.name || 'User'}</Text>
             <Text style={styles.resumeRole}>{profile.currentRole || 'No role set'}{profile.company ? ` at ${profile.company}` : ''}</Text>
-            <Text style={styles.resumeContact}>{profile.email} {profile.mobile ? `| ${profile.mobile}` : ''}</Text>
+            <Text style={styles.resumeContact}>{profile.email}</Text>
           </View>
         </View>
 
-        <View style={styles.divider} />
+        {/* <View style={styles.divider} /> */}
 
         {profile.previousRole || profile.previousCompany ? (
           <>
@@ -389,19 +382,21 @@ export default function HomeScreen() {
         {resumeName && (
           <>
             <Text style={styles.sectionLabel}>Resume</Text>
-            <Pressable style={styles.resumeButton} onPress={() => {}}>
+            <Pressable style={styles.resumeButton} onPress={() => { }}>
               <Text style={styles.resumeButtonText}>Resume Attached: {resumeName}</Text>
             </Pressable>
           </>
         )}
+
+        <ProfileInteractions />
       </View>
 
       <Pressable style={styles.impactButton} onPress={handleImpactPress}>
         <Text style={styles.impactButtonText}>Add Impact</Text>
       </Pressable>
 
-      <MyPostActivity />
-      <ProfileInteractions />
+      {/* <MyPostActivity /> */}
+
 
       {/* <Text style={styles.sectionTitle}>My AI Impact Thought</Text>
       {posts.length === 0 ? (
@@ -486,20 +481,6 @@ export default function HomeScreen() {
                   </View>
                 )}
                 <Text style={styles.modalPostContent}>{selectedPost.content}</Text>
-                {isHR && selectedPost.user && (
-                  <Pressable
-                    style={styles.contactButton}
-                    onPress={() => {
-                      if (selectedPost.user?.mobile) {
-                        Alert.alert('Contact User', `Mobile: ${selectedPost.user.mobile}`);
-                      } else {
-                        Alert.alert('Contact', 'Mobile number not available');
-                      }
-                    }}
-                  >
-                    <Text style={styles.contactButtonText}>📞 Contact User</Text>
-                  </Pressable>
-                )}
                 <View style={styles.modalPostActions}>
                   <Pressable style={styles.likeButton} onPress={() => handleLike(selectedPost._id)}>
                     <Text style={[styles.likeButtonText, isLiked(selectedPost) && styles.likedText]}>
@@ -554,7 +535,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
     color: colors.auth.text,
     marginBottom: spacing.lg,
@@ -837,19 +818,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: spacing.md,
   },
-  contactButton: {
-    backgroundColor: colors.secondary,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  contactButtonText: {
-    color: colors.white,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-  },
   modalPostActions: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -991,23 +959,24 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.auth.textSecondary,
   },
-  divider: {
-    height: 1,
-    backgroundColor: colors.auth.cardBorder,
-    marginVertical: spacing.md,
-  },
+  // divider: {
+  //   height: 1,
+  //   backgroundColor: colors.auth.cardBorder,
+  //   marginVertical: spacing.md,
+  // },
   sectionLabel: {
-    fontSize: typography.fontSize.xs,
+    fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
     color: colors.auth.textSecondary,
+    fontStyle: 'italic',
     marginTop: spacing.md,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   sectionValue: {
     fontSize: typography.fontSize.base,
-    color: colors.auth.text,
+    color: "#636262",
     lineHeight: 22,
   },
   skillsContainer: {

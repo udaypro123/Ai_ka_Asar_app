@@ -1,17 +1,13 @@
+import type { NotificationPreferences } from '../features/notifications/domain/notification.types';
+
 export interface User {
   _id: string;
   name: string;
   email: string;
   country?: string;
-  profession?: string;
-  industry?: string;
   experience?: string;
-  employmentStatus?: string;
   skills?: string[];
-  careerGoal?: string;
   aiUsage?: string;
-  aiImpactStatus?: string;
-  mobile?: string;
   currentRole?: string;
   previousRole?: string;
   previousCompany?: string;
@@ -25,11 +21,7 @@ export interface User {
   privacySettings?: {
     profileDiscoverable: boolean;
   };
-  notificationPreferences?: {
-    email: boolean;
-    sms: boolean;
-    whatsapp: boolean;
-  };
+  notificationPreferences?: NotificationPreferences;
   isBlocked?: boolean;
   isEmailVerified: boolean;
   roles: string[];
@@ -133,22 +125,13 @@ export interface CareerJourney {
   updatedAt: string;
 }
 
-export interface Notification {
-  _id: string;
-  userId: string;
-  title: string;
-  body: string;
-  type: string;
-  read: boolean;
-  createdAt: string;
-}
+export type { Notification } from '../features/notifications/domain/notification.types';
 
 export interface PostAuthor {
   _id: string;
   name: string;
   email: string;
   roles: string[];
-  mobile?: string;
   currentRole?: string;
   previousRole?: string;
   previousCompany?: string;

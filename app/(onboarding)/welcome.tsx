@@ -1,13 +1,16 @@
-import { View, Text, Pressable, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useState } from 'react';
 import { useAppRouter as useRouter } from '@/navigation';
+import { useAppDispatch, useAppSelector } from '../../src/store/hooks';
+import { completeOnboarding } from '../../src/store/slices/authSlice';
+import { getPostAuthRoute } from '../../src/navigation/postAuthRoute';
 import { colors, typography, spacing, borderRadius } from '@/theme';
-
-const { width } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
   const [currentStep, setCurrentStep] = useState(0);
+  const dispatch = useAppDispatch();
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const router = useRouter();
 
   const steps = [
@@ -38,16 +41,25 @@ export default function WelcomeScreen() {
     },
   ];
 
+  const finishWelcome = () => {
+    if (isAuthenticated && user) {
+      dispatch(completeOnboarding());
+      router.replace(getPostAuthRoute(user));
+      return;
+    }
+    router.replace('/(auth)/login');
+  };
+
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      router.replace('/(auth)/login');
+      finishWelcome();
     }
   };
 
   const handleSkip = () => {
-    router.replace('/(auth)/login');
+    finishWelcome();
   };
 
   return (

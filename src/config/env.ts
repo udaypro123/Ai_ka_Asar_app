@@ -1,17 +1,20 @@
 import Config from 'react-native-config';
 
-const apiUrl =
-  Config.API_URL ||
-  Config.EXPO_PUBLIC_API_URL ||
-  'http://localhost:5000/api/v1';
+const configuredApiUrl = Config.EXPO_PUBLIC_API_URL || Config.API_URL;
+
+if (!configuredApiUrl && !__DEV__) {
+  throw new Error('EXPO_PUBLIC_API_URL must be set for production builds');
+}
+
+const apiUrl = configuredApiUrl || 'http://localhost:5000/api/v1';
 const parsedApiUrl = new URL(apiUrl);
 
 if (!['http:', 'https:'].includes(parsedApiUrl.protocol)) {
-  throw new Error('API_URL must use HTTP or HTTPS');
+  throw new Error('EXPO_PUBLIC_API_URL must use HTTP or HTTPS');
 }
 
 if (!__DEV__ && parsedApiUrl.protocol !== 'https:') {
-  throw new Error('Production builds require an HTTPS API URL');
+  throw new Error('Production builds require EXPO_PUBLIC_API_URL to use HTTPS');
 }
 
 export const env = {

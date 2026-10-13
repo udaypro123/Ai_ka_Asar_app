@@ -161,8 +161,6 @@ export default function AdminUsersScreen() {
                   </View>
                   <Text style={styles.arrow}>›</Text>
                 </View>
-                {targetUser.mobile && <Text style={styles.userDetail}>Mobile: {targetUser.mobile}</Text>}
-                {targetUser.profession && <Text style={styles.userDetail}>{targetUser.profession}</Text>}
                 {targetUser.skills && targetUser.skills.length > 0 && (
                   <View style={styles.skillsRow}>
                     {targetUser.skills.slice(0, 4).map((skill, index) => (

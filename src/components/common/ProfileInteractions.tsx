@@ -15,7 +15,6 @@ import { useAppSelector } from '../../store/hooks';
 import {
   userCommentService,
   userLikeService,
-  type UserInteractionSummary,
 } from '../../services/social.service';
 import type { UserComment } from '../../types';
 import { borderRadius, colors, spacing, typography } from '../../theme';
@@ -23,6 +22,7 @@ import { usePageRefresh } from './PageRefresh';
 import { useToast } from './Toast';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { ThreadedComments } from './ThreadedComments';
+import { AimargLoader } from './AimargLoader';
 
 export function ProfileInteractions({ refreshKey = 0 }: { refreshKey?: number }) {
   const { user } = useAppSelector((state) => state.auth);
@@ -30,31 +30,41 @@ export function ProfileInteractions({ refreshKey = 0 }: { refreshKey?: number })
   const [comments, setComments] = useState<UserComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [replyTarget, setReplyTarget] = useState<UserComment | null>(null);
-  const [replyText, setReplyText] = useState('');
+  const [commentText, setCommentText] = useState('');
   const [sending, setSending] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const { showToast } = useToast();
 
   const loadInteractions = useCallback(async () => {
     if (!user?._id) {
+      setLikeCount(0);
+      setComments([]);
       setLoading(false);
       return;
     }
-    try {
-      const [summaries, latestComments] = await Promise.all([
-        userLikeService.getInteractionSummary(),
-        userCommentService.getUserComments(user._id),
-      ]);
-      const ownSummary = (summaries as UserInteractionSummary[]).find(
+    setLoading(true);
+    const [summaryResult, commentsResult] = await Promise.allSettled([
+      userLikeService.getInteractionSummary(),
+      userCommentService.getUserComments(user._id),
+    ]);
+    const errors: unknown[] = [];
+    if (summaryResult.status === 'fulfilled') {
+      const ownSummary = summaryResult.value.find(
         (summary) => summary.targetUserId === user._id
       );
       setLikeCount(ownSummary?.likeCount ?? 0);
-      setComments(latestComments);
-    } catch (error: unknown) {
-      showToast(getApiErrorMessage(error, 'Could not load your profile activity.'), 'error');
-    } finally {
-      setLoading(false);
+    } else {
+      errors.push(summaryResult.reason);
     }
+    if (commentsResult.status === 'fulfilled') {
+      setComments(commentsResult.value);
+    } else {
+      errors.push(commentsResult.reason);
+    }
+    if (errors.length > 0) {
+      showToast(getApiErrorMessage(errors[0], 'Could not load your profile activity.'), 'error');
+    }
+    setLoading(false);
   }, [showToast, user?._id]);
 
   useFocusEffect(
@@ -68,24 +78,29 @@ export function ProfileInteractions({ refreshKey = 0 }: { refreshKey?: number })
     if (refreshKey > 0) loadInteractions();
   }, [loadInteractions, refreshKey]);
 
-  const sendReply = async () => {
-    const content = replyText.trim();
-    if (!user?._id || !replyTarget || !content || sending) return;
+  const addComment = async () => {
+    const content = commentText.trim();
+    if (!user?._id || !content || sending) return;
     setSending(true);
     try {
-      const reply = await userCommentService.createUserComment({
+      const comment = await userCommentService.createUserComment({
         targetUserId: user._id,
         content,
-        parentCommentId: replyTarget._id,
+        ...(replyTarget ? { parentCommentId: replyTarget._id } : {}),
       });
-      setComments((current) => [reply, ...current]);
-      setReplyText('');
+      setComments((current) => [comment, ...current]);
+      setCommentText('');
       setReplyTarget(null);
     } catch (error: unknown) {
-      showToast(getApiErrorMessage(error, 'Could not send your reply.'), 'error');
+      showToast(getApiErrorMessage(error, 'Could not post your comment.'), 'error');
     } finally {
       setSending(false);
     }
+  };
+
+  const openActivity = () => {
+    setShowComments(true);
+    loadInteractions();
   };
 
   return (
@@ -95,7 +110,7 @@ export function ProfileInteractions({ refreshKey = 0 }: { refreshKey?: number })
         accessibilityRole="button"
         accessibilityLabel={`${likeCount} profile likes and ${comments.length} comments. Open activity`}
         style={styles.card}
-        onPress={() => setShowComments(true)}
+        onPress={openActivity}
       >
         <Text style={styles.counts}>❤️ {likeCount} likes  ·  💬 {comments.length} comments</Text>
         <Text style={styles.infoText}>{loading ? 'Loading activity...' : 'Tap to view comments and reply'}</Text>
@@ -113,47 +128,52 @@ export function ProfileInteractions({ refreshKey = 0 }: { refreshKey?: number })
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Profile activity</Text>
-              <Text style={styles.counts}>❤️ {likeCount} likes  ·  💬 {comments.length} comments</Text>
-              <ScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
-                {loading ? (
-                  <Text style={styles.infoText}>Loading comments...</Text>
-                ) : comments.length === 0 ? (
-                  <Text style={styles.infoText}>No comments yet.</Text>
-                ) : (
-                  <ThreadedComments comments={comments} onReply={setReplyTarget} />
-                )}
-              </ScrollView>
-              {replyTarget && (
-                <View style={styles.composerHeader}>
-                  <Text style={styles.infoText}>Replying to {replyTarget.userName}</Text>
-                  <Pressable onPress={() => setReplyTarget(null)}>
-                    <Text style={styles.cancelReply}>Cancel</Text>
-                  </Pressable>
-                </View>
-              )}
-              {replyTarget && (
-                <View style={styles.inputRow}>
+              <Pressable style={styles.closeButton} onPress={() => setShowComments(false)}>
+                <Text style={styles.closeText}>Close</Text>
+              </Pressable>
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={styles.modalContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                <Text style={styles.modalTitle}>Profile likes & comments</Text>
+                <Text style={styles.counts}>❤️ {likeCount} likes  ·  💬 {comments.length} comments</Text>
+                <View style={styles.commentInputRow}>
                   <TextInput
                     style={styles.input}
-                    value={replyText}
-                    onChangeText={setReplyText}
-                    placeholder="Write a reply..."
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    placeholder={replyTarget ? 'Write a reply...' : 'Add a comment...'}
                     maxLength={500}
                     multiline
                   />
                   <Pressable
-                    style={[styles.sendButton, (!replyText.trim() || sending) && styles.disabled]}
-                    onPress={sendReply}
-                    disabled={!replyText.trim() || sending}
+                    style={[styles.sendButton, (!commentText.trim() || sending) && styles.disabled]}
+                    onPress={addComment}
+                    disabled={!commentText.trim() || sending}
                   >
-                    <Text style={styles.sendText}>{sending ? '...' : 'Send'}</Text>
+                    <Text style={styles.sendText}>{sending ? '...' : 'Post'}</Text>
                   </Pressable>
                 </View>
-              )}
-              <Pressable style={styles.closeButton} onPress={() => setShowComments(false)}>
-                <Text style={styles.closeText}>Close</Text>
-              </Pressable>
+                <View style={styles.commentsSection}>
+                  <Text style={styles.commentsTitle}>Comments ({comments.length})</Text>
+                  {loading ? (
+                    <AimargLoader compact message="Loading comments" />
+                  ) : comments.length === 0 ? (
+                    <Text style={styles.infoText}>No comments yet. Be the first to comment.</Text>
+                  ) : (
+                    <ThreadedComments comments={comments} onReply={setReplyTarget} />
+                  )}
+                </View>
+                {replyTarget && (
+                  <View style={styles.composerHeader}>
+                    <Text style={styles.infoText}>Replying to {replyTarget.userName}</Text>
+                    <Pressable onPress={() => setReplyTarget(null)}>
+                      <Text style={styles.cancelReply}>Cancel</Text>
+                    </Pressable>
+                  </View>
+                )}
+              </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -176,24 +196,36 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.xl,
     borderWidth: 1,
     borderColor: colors.auth.cardBorder,
+    cursor: 'pointer',
   },
   modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     padding: spacing.lg,
+    paddingTop: spacing.xl * 5,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   modalKeyboard: {
     width: '100%',
     maxWidth: 520,
-    maxHeight: '90%',
+    height: '85%',
+  },
+  modalScroll: {
+    flex: 1,
+    width: '100%',
   },
   modalCard: {
     flex: 1,
-    padding: spacing.lg,
+    width: '100%',
     backgroundColor: colors.white,
     borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    borderColor: colors.auth.cardBorder,
+    overflow: 'hidden',
+  },
+  modalContent: {
+    padding: spacing.lg,
   },
   modalTitle: {
     color: colors.auth.text,
@@ -201,19 +233,33 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.bold,
     marginBottom: spacing.sm,
   },
-  commentsList: {
-    flexGrow: 0,
-    maxHeight: 480,
-    marginVertical: spacing.md,
+  commentsSection: {
+    borderTopWidth: 1,
+    borderTopColor: colors.auth.cardBorder,
+    paddingTop: spacing.md,
+    marginTop: spacing.md,
   },
   closeButton: {
-    alignItems: 'center',
-    paddingTop: spacing.md,
+    alignItems: 'flex-end',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.white,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
   },
   closeText: {
-    color: colors.primary,
+    backgroundColor: colors.primary,
+    color: colors.white,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.semibold,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  commentsTitle: {
+    color: colors.auth.text,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    marginBottom: spacing.md,
   },
   counts: {
     color: colors.auth.text,
@@ -233,14 +279,15 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     marginBottom: spacing.xs,
   },
-  cancelReply: {
-    color: colors.error,
-    fontSize: typography.fontSize.xs,
-  },
-  inputRow: {
+  commentInputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  cancelReply: {
+    color: colors.error,
+    fontSize: typography.fontSize.xs,
   },
   input: {
     flex: 1,
